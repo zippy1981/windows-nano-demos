@@ -43,7 +43,7 @@ RUN mkdir %MICROEDITOR_PATH% &&\
 # The users path is empty at this point so we dont need to append
 # Set path. In nano 2019 we need to make the users environment key before we can add values to it. We dont need the call to reg.exe in 2022
 RUN reg query HKCU\Environment 2> NUL || reg add HKCU\Environment /v PATH
-RUN setx PATH "%PHP_DIR%;%USERPROFILE%\AppData\Roaming\Composer\vendor\bin;%NODE_DIRECTORY%;MICROEDITOR_PATH"
+RUN setx PATH "%PHP_DIR%;%USERPROFILE%\AppData\Roaming\Composer\vendor\bin;%NODE_DIRECTORY%;%MICROEDITOR_PATH%"
 
 # Download Composer and place composer.phar in C:\php.
 # Intall the Larval tool as well. This will  create larval projects that will execute.

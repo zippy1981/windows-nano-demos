@@ -4,6 +4,8 @@ Node and PHP actually work. A text editor caleld micro is available
 
 Vite composer, and the laravel are installed and in your path.
 
+Available at <https://hub.docker.com/repository/docker/zippy1981/windows-nano-php/general>.
+
 ## Building
 
 To build a 2022 container:

@@ -1,12 +1,16 @@
+ARG WINDOWS_VERSION=2022
 # Use the official Microsoft Windows Server Core Nano image
-FROM mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64
+FROM mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
 
 # Set environment variables
-ENV NODE_DIRECTORY C:\\Program Files\\node-v22.11.0-win-x64
-ENV NODE_VERSION 22.11.0
-ENV PHP_VERSION 8.4.1
-ENV PHP_VS_VERSION 17
-ENV PHP_DIR C:\\Program Files\\php
+ENV \
+    MICROEDITOR_VERSION=2.0.14 \
+    MICROEDITOR_PATH="C:\\Program Files\\micro-2.0.14" \
+    NODE_DIRECTORY="C:\\Program Files\\node-v22.11.0-win-x64" \
+    NODE_VERSION=22.11.0 \
+    PHP_VERSION=8.4.1 \
+    PHP_VS_VERSION=17 \
+    PHP_DIR="C:\\Program Files\\php"
 
 # We can't install the Visual C++ Redistributable that PHP needs directly so instead we just copy the DLL
 # Also in current versions of windows 11 tar.exe has been updated to support 7zip files.
@@ -29,9 +33,17 @@ RUN mkdir "%PHP_DIR%" &&\
     echo extension=openssl >> "%PHP_DIR%\php.ini" && \
     echo extension=zip >> "%PHP_DIR%\php.ini"
 
-# Add php, node and the composer bin directory to PATH
+# Install micro editor
+RUN mkdir %MICROEDITOR_PATH% &&\
+    curl -LO https://github.com/zyedidia/micro/releases/download/v%MICROEDITOR_VERSION%/micro-%MICROEDITOR_VERSION%-win64.zip && \
+    tar -xvf micro-%MICROEDITOR_VERSION%-win64.zip -C "%ProgramFiles%" && \
+    del micro-%MICROEDITOR_VERSION%-win64.zip
+
+# Add what we installed to the path
 # The users path is empty at this point so we dont need to append
-RUN setx PATH "%PHP_DIR%;%USERPROFILE%\AppData\Roaming\Composer\vendor\bin;%NODE_DIRECTORY%"
+# Set path. In nano 2019 we need to make the users environment key before we can add values to it. We dont need the call to reg.exe in 2022
+RUN reg query HKCU\Environment 2> NUL || reg add HKCU\Environment /v PATH
+RUN setx PATH "%PHP_DIR%;%USERPROFILE%\AppData\Roaming\Composer\vendor\bin;%NODE_DIRECTORY%;%MICROEDITOR_PATH%"
 
 # Download Composer and place composer.phar in C:\php.
 # Intall the Larval tool as well. This will  create larval projects that will execute.

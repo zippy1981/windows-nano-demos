@@ -10,7 +10,7 @@ Available at <https://hub.docker.com/repository/docker/zippy1981/windows-nano-ph
 
 To build a 2022 container:
 
-> build.cmd
+> ./build.ps1
 
 To build the windwos 2019 container:
 
@@ -21,9 +21,6 @@ $env:WINDOWS_VERSION=2019
 ./build.cmd
 ```
 
-The Command Prompt
+# Running
 
-```cmd
-set WINDOWS_VERSION 2019
-build.cmd
-```
+> docker run -ti zippy1981/windows-nano-php:2019 cmd

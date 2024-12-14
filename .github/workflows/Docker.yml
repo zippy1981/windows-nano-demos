@@ -7,6 +7,8 @@ on:
   push:
     branches:
       - main
+env:
+    DOCKER_USERNAME: zippy1981
 
 jobs:
   build:
@@ -18,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        WINDOWS_VERSION: [2019, 2022, 2025]
+        WINDOWS_VERSION: [2019, 2022]
 
     steps:
       - name: Checkout Code
@@ -30,16 +32,16 @@ jobs:
           $env:WINDOWS_VERSION=${{ matrix.WINDOWS_VERSION }}
           ./build.ps1
 
-      #- name: Log in to Docker Hub
-      #  if: github.event_name == 'pull_request'
-      #  uses: docker/login-action@v2
-      #  with:
-      #    username: ${{ secrets.DOCKER_USERNAME }}
-      #    password: ${{ secrets.DOCKER_PASSWORD }}
-      #- name: Publish Docker Image
-      #  if: github.event_name == 'pull_request'
-      #  run: |            
-      #    docker push ${{ secrets.DOCKER_USERNAME }}/nano-server-php:latest
+      - name: Log in to Docker Hub
+        if: github.event_name == 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PAT }}
+      - name: Publish Docker Image
+        if: github.event_name == 'pull_request'
+        run: |            
+          docker push ${{ env.DOCKER_USERNAME }}/nano-server-php:latest
 
 
       

@@ -18,6 +18,9 @@ ENV \
 # also we copy 7z.exe and 7z.dll to the system32 folder so we can extract the Far Manager archive
 COPY system32\* C:\\windows\\system32
 
+# In nano 2019 we need to make the users environment key before we can add values to it. We dont need the call to reg.exe in 2022
+RUN reg query HKCU\Environment 2> NUL || reg add HKCU\Environment /v PATH
+
 # Download and install nodejs We do it in two commands vecause the curl | tar -xvf - -C c:/ command doesn't extract all the files
 RUN mkdir "%NODE_DIRECTORY%" && \
     curl -L https://nodejs.org/dist/v%NODE_VERSION%/node-v%NODE_VERSION%-win-x64.zip -LOJ &&\
@@ -37,12 +40,11 @@ RUN mkdir "%PHP_DIR%" &&\
 RUN mkdir %MICROEDITOR_PATH% &&\
     curl -LO https://github.com/zyedidia/micro/releases/download/v%MICROEDITOR_VERSION%/micro-%MICROEDITOR_VERSION%-win64.zip && \
     tar -xvf micro-%MICROEDITOR_VERSION%-win64.zip -C "%ProgramFiles%" && \
-    del micro-%MICROEDITOR_VERSION%-win64.zip
+    del micro-%MICROEDITOR_VERSION%-win64.zip && \
+    setx EDITOR micro
 
 # Add what we installed to the path
 # The users path is empty at this point so we dont need to append
-# Set path. In nano 2019 we need to make the users environment key before we can add values to it. We dont need the call to reg.exe in 2022
-RUN reg query HKCU\Environment 2> NUL || reg add HKCU\Environment /v PATH
 RUN setx PATH "%PHP_DIR%;%USERPROFILE%\AppData\Roaming\Composer\vendor\bin;%NODE_DIRECTORY%;%MICROEDITOR_PATH%"
 
 # Download Composer and place composer.phar in C:\php.

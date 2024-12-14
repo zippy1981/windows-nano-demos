@@ -12,7 +12,6 @@ env:
 
 jobs:
   build:
-    if: github.event_name == 'pull_request'
     runs-on: windows-latest
     defaults:
       run:
@@ -30,6 +29,7 @@ jobs:
       - name: Build Docker Image
         run: |
           $env:WINDOWS_VERSION=${{ matrix.WINDOWS_VERSION }}
+          & "dockercli.exe" -SwitchWindowsEngine
           ./build.ps1
 
       - name: Log in to Docker Hub

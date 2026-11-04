@@ -1,0 +1,46 @@
+---
+name: Rust container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nano-server-rust/**'
+      - '.github/workflows/rust-container.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'nano-server-rust/**'
+      - '.github/workflows/rust-container.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    # Only run for pushes, manual runs and PRs from this repo. PRs from forks would run untrusted code on the self-hosted runner.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, windows, docker]
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      IMAGE: windows-nano-rust:2022-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (ltsc2022)
+        working-directory: nano-server-rust
+        run: |
+          docker build --build-arg WINDOWS_VERSION=2022 -t $env:IMAGE .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Smoke test
+        # The runner is itself a container, so we don't bind-mount the workspace. Everything runs inside the image.
+        run: |
+          docker run --rm $env:IMAGE "rustc --version && cargo --version && git --version && cargo new hello && cd hello && cargo run"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Remove image
+        if: always()
+        run: |
+          docker rmi -f $env:IMAGE
+          exit 0

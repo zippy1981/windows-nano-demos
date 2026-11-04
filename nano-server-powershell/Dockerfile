@@ -58,8 +58,9 @@ RUN mkdir "%ProgramFiles%\PowerShell\Modules" && \
     icacls "%ProgramFiles%\PowerShell\Modules" /grant "User Manager\ContainerUser:(OI)(CI)M"
 USER ContainerUser
 
-# From here on RUN uses PowerShell instead of cmd
-SHELL ["C:\\Program Files\\PowerShell\\7\\pwsh.exe", "-NoLogo", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+# From here on RUN uses PowerShell instead of cmd. Use the bare name (found via the PATH set above):
+# on ltsc2019 a full "C:\Program Files\..." SHELL path is not quoted and splits at the space.
+SHELL ["pwsh","-NoLogo", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
 # PSResourceGet fails if its LocalAppData store folder doesn't exist yet, so create it first.
 # PSResourceGet itself is saved first so the pinned version is the one on PSModulePath.

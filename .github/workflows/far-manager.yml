@@ -19,7 +19,7 @@ jobs:
     # Only run for pushes, manual runs and PRs from this repo. PRs from forks would run untrusted code on the self-hosted runner.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, windows, docker]
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -34,15 +34,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build image (ltsc${{ matrix.windows-version }})
-        # build.cmd only wraps this command; there are no host DLLs to stage, the .7z is extracted in a servercore stage.
+        # build.cmd only wraps this command; there are no host DLLs to stage (Far links the CRT statically).
+        # Hyper-V isolated builds default to a 1 GB memory limit and can hang, so give them 4 GB.
         working-directory: nano-server-far
         run: |
-          docker build --build-arg WINDOWS_VERSION=${{ matrix.windows-version }} -t $env:IMAGE .
+          docker build --memory 4g --build-arg WINDOWS_VERSION=${{ matrix.windows-version }} -t $env:IMAGE .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Far loads (help output, no missing DLLs)
         run: |
-          $out = docker run --rm $env:IMAGE "far.exe -?" 2>&1 | Out-String
+          $out = docker run --rm --memory 2g $env:IMAGE "far.exe -?" 2>&1 | Out-String
           $code = $LASTEXITCODE
           Write-Output $out
           # 0xC0000135 (-1073741515) is STATUS_DLL_NOT_FOUND
@@ -54,7 +55,7 @@ jobs:
         # The runner is itself a container, so instead of bind-mounting the workspace we docker cp the
         # test profile into a created (not yet started) container. -t gives Far a console.
         run: |
-          docker create -t --name $env:TEST_CONTAINER $env:IMAGE "C:\Users\ContainerUser\far-test\run-test.cmd"
+          docker create -t --memory 2g --name $env:TEST_CONTAINER $env:IMAGE "C:\Users\ContainerUser\far-test\run-test.cmd"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           docker cp nano-server-far/test "$($env:TEST_CONTAINER):C:\Users\ContainerUser\far-test"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -40,7 +40,8 @@ jobs:
 
       - name: Build image
         run: |
-          docker build --pull --build-arg "WINDOWS_VERSION=${{ matrix.windows-version }}" -t "$env:IMAGE" nano-server-powershell
+          # Hyper-V isolated builds default to a 1 GB memory limit, which can hang the build.
+          docker build --pull --memory 4g --build-arg "WINDOWS_VERSION=${{ matrix.windows-version }}" -t "$env:IMAGE" nano-server-powershell
           if ($LASTEXITCODE -ne 0) { throw "docker build failed ($LASTEXITCODE)" }
           docker image ls "$env:IMAGE"
 
@@ -49,7 +50,7 @@ jobs:
           # The script is passed as -EncodedCommand (base64 is safe through the cmd /S /C entrypoint).
           $script = Get-Content -Raw -Path nano-server-powershell/tests/smoke.ps1
           $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
-          docker run --rm "$env:IMAGE" pwsh -NoLogo -NoProfile -NonInteractive -EncodedCommand $encoded
+          docker run --rm "$env:IMAGE" pwsh -NoLogo -NoProfile -NonInteractive -OutputFormat Text -EncodedCommand $encoded
           if ($LASTEXITCODE -ne 0) { throw "smoke test failed ($LASTEXITCODE)" }
 
       - name: Default command is pwsh

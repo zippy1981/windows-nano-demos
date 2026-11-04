@@ -7,3 +7,4 @@ I'm experimenting with windows containers and I'm putting the results here.
 Right now there is a PHP one. It has node and PHP and it works. I don't have notes to expose ports.
 
 - [nano-server-rust](nano-server-rust/README.md): Rust (gnu toolchain), cargo, MinGit and micro on nano server. `cargo run` works.
+- [nano-server-far](nano-server-far/README.md): Far Manager 3 (x64, stable build). It's based on servercore because Far needs DLLs that nanoserver doesn't have. Run it with `docker run -it`.

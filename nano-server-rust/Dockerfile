@@ -20,8 +20,12 @@ ENV \
     MICROEDITOR_PATH="C:\\Program Files\\micro-2.0.15"
 
 # Install rustup and the gnu toolchain with the minimal profile (rustc, cargo, rust-std, rust-mingw)
+# Hyper-V isolated build containers get 1 GB of RAM by default. rustup's parallel unpacker filled that and
+# rustup-init stalled (idle at ~1 GB working set) on uncached CI builds, so we cap its I/O threads and unpack buffer.
 RUN mkdir "%RUSTUP_HOME%" "%CARGO_HOME%" && \
     curl -fL -o rustup-init.exe https://static.rust-lang.org/rustup/archive/%RUSTUP_VERSION%/%RUST_HOST%/rustup-init.exe && \
+    set "RUSTUP_IO_THREADS=1" && \
+    set "RUSTUP_UNPACK_RAM=268435456" && \
     rustup-init.exe -y --no-modify-path --profile minimal --default-host %RUST_HOST% --default-toolchain %RUST_VERSION% && \
     del rustup-init.exe
 

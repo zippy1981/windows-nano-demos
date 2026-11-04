@@ -19,6 +19,8 @@ jobs:
     # Only run for pushes, manual runs and PRs from this repo. PRs from forks would run untrusted code on the self-hosted runner.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, windows, docker]
+    # A stuck docker build would otherwise hold the shared runner for 6 hours.
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -34,7 +36,7 @@ jobs:
       - name: Build image (ltsc${{ matrix.windows-version }})
         working-directory: nano-server-rust
         run: |
-          docker build --build-arg WINDOWS_VERSION=${{ matrix.windows-version }} -t $env:IMAGE .
+          docker build --memory 4g --build-arg WINDOWS_VERSION=${{ matrix.windows-version }} -t $env:IMAGE .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Smoke test

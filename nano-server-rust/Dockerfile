@@ -1,6 +1,7 @@
 ARG WINDOWS_VERSION=2022
-# Use the official Microsoft Windows Nano Server image
-FROM mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+# Use the official Microsoft Windows Nano Server image. Override BASE_IMAGE to build on a different base.
+ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+FROM ${BASE_IMAGE}
 
 # Set environment variables. Every tool version is pinned here.
 # We use the x86_64-pc-windows-gnu toolchain instead of MSVC. The MSVC toolchain needs link.exe

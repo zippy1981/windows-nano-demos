@@ -19,18 +19,22 @@ jobs:
     # Only run for pushes, manual runs and PRs from this repo. PRs from forks would run untrusted code on the self-hosted runner.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, windows, docker]
+    strategy:
+      fail-fast: false
+      matrix:
+        windows-version: ['2019', '2022', '2025']
     defaults:
       run:
         shell: pwsh
     env:
-      IMAGE: windows-nano-rust:2022-${{ github.sha }}
+      IMAGE: windows-nano-rust:${{ matrix.windows-version }}-${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build image (ltsc2022)
+      - name: Build image (ltsc${{ matrix.windows-version }})
         working-directory: nano-server-rust
         run: |
-          docker build --build-arg WINDOWS_VERSION=2022 -t $env:IMAGE .
+          docker build --build-arg WINDOWS_VERSION=${{ matrix.windows-version }} -t $env:IMAGE .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Smoke test

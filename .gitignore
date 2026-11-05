@@ -1,0 +1,8 @@
+# Claude Code agent worktrees
+.claude/worktrees/
+.venv/
+__pycache__/
+
+# pytest-cov data
+.coverage
+.coverage.*

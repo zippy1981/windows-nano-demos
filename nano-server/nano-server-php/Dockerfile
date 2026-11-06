@@ -1,4 +1,5 @@
 # windows-nano-php: PHP 8.5 and Node.js with Composer, the Laravel installer, vite and the micro editor on Nano Server.
+# Docker Hub categories: languages-and-frameworks, developer-tools
 #
 # Build from this folder (build.cmd does the same, and also tags zippy1981/windows-nano-php):
 #   docker build --memory 4g --build-arg WINDOWS_VERSION=2022 -t windows-nano-php:2022 .

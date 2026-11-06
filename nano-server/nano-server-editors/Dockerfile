@@ -1,4 +1,5 @@
 # windows-nano-editors: Console text editors on Nano Server: Microsoft Edit, GNU nano and Helix.
+# Docker Hub categories: developer-tools
 #
 # The editors need a console: run the image with docker run -it. CI runs only their non-interactive checks.
 #

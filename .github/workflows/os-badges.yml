@@ -17,6 +17,7 @@ on:
       - PowerShell container
       - Rust container
       - SSH server container
+      - Wine tools container
     types: [completed]
     branches: [main]
   workflow_dispatch:

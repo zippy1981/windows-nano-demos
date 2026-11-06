@@ -6,6 +6,25 @@ Find out which terminal text editors run in a nanoserver container, so that the 
 
 Out of scope here, because they are being done separately: **micro** (already in `nano-server-php` and `nano-server-rust`), **Far Manager**, **vim** and **neovim**.
 
+## Status (2026-11-06)
+
+**Phase 1 is done, phases 2 to 4 are open.**
+
+PR #53 shipped Edit 2.0.0, nano 7.2-22.1 and Helix 25.07.1 as `nano-server/nano-server-editors/`, under the ADR 0012 layout. It differs from this plan in a few ways:
+
+- `smoke-test.ps1` runs the version tests, instead of `tests/run-tests.cmd`.
+- Helix's `vcruntime140.dll` comes from a Server Core `vc_redist` stage, not the Python zip.
+- Zips are unpacked with `Expand-Archive`, because `tar` writes `nano.exe` as zero bytes.
+- CI is `editors-container.yml` through the shared workflow, on 2019, 2022 and 2025.
+
+Still open:
+
+- the manual `docker run -it` check in phase 1;
+- `ptyrun.exe` and the keystroke tests (phase 2);
+- phases 3 and 4.
+
+Paths below that say `nano-server-*/` now live under `nano-server/` (ADR 0012).
+
 ## How the candidates were checked
 
 - **Static import check.** Each Windows build that is published as a download was fetched, and its PE import table was checked against the exports of nanoserver ltsc2022's own DLLs (`System32\forwarders\*.dll`, `KernelBase.dll`, `ucrtbase.dll`, `msvcrt.dll` and others copied out of `mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64`). This is the same method as `plans/reactos-binaries.md`. The editors were **not** run in the check. The smoke tests below are for the implementing agent.
@@ -179,14 +198,14 @@ If `CreatePseudoConsole` does not work in nanoserver, the fallback is a manual t
 
 ### Phase 1: P1 editors, version tests
 
-- [ ] Create `nano-server-editors/` (Dockerfile, `build.cmd`, README, `tests/run-tests.cmd`) with Edit, nano and Helix, including the `vcruntime140.dll` step for Helix.
-- [ ] Extraction checks (`MZ` header) after each unzip.
-- [ ] Acceptance: `build.cmd` on ltsc2022 builds. `run-tests.cmd` passes `edit --version`, `nano --version`, `hx --version` and `hx --health`. A manual `docker run -it` session opens and saves a file in each of the three, and the README records the result.
+- [x] Create `nano-server-editors/` (Dockerfile, `build.cmd`, README, `tests/run-tests.cmd`) with Edit, nano and Helix, including the `vcruntime140.dll` step for Helix. Done in #53 as `nano-server/nano-server-editors/`, with `smoke-test.ps1` instead of `run-tests.cmd`.
+- [x] Extraction checks (`MZ` header) after each unzip. Done in #53, in `Get-VerifiedZip.ps1`.
+- [ ] Acceptance: `build.cmd` on ltsc2022 builds. `run-tests.cmd` passes `edit --version`, `nano --version`, `hx --version` and `hx --health`. A manual `docker run -it` session opens and saves a file in each of the three, and the README records the result. The builds and version tests pass in CI. The manual `-it` check is not recorded yet.
 
 ### Phase 2: pseudo console tests and CI
 
 - [ ] `ptyrun.exe`: source, MinGW build job, and the keystroke scripts above.
-- [ ] `.github/workflows/editors-container.yml` with the 2019, 2022 and 2025 matrix.
+- [x] `.github/workflows/editors-container.yml` with the 2019, 2022 and 2025 matrix. Done in #53, through the shared workflow (ADR 0009).
 - [ ] Acceptance: the workflow is green on all three versions. For each P1 editor, the pseudo console test writes `hello` to its file, or the README records why `CreatePseudoConsole` cannot be used on that version.
 
 ### Phase 3: P2 and P3 editors

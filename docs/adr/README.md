@@ -18,3 +18,4 @@ These records explain why this repo is built the way it is. Each one covers a si
 | 0012 | [Images live in a directory for their base image](0012-images-live-in-a-directory-for-their-base-image.md) | Accepted | 2026-11-05 |
 | 0013 | [The Go image has a cgo variant using llvm-mingw](0013-the-go-image-has-a-cgo-variant-using-llvm-mingw.md) | Proposed | 2026-11-05 |
 | 0014 | [Artifact cache with Caddy on ltsc2025](0014-artifact-cache-with-caddy-on-ltsc2025.md) | Proposed | 2026-11-06 |
+| 0015 | [The runner fleet and the artifact cache run under Docker Compose](0015-runner-fleet-and-artifact-cache-run-under-docker-compose.md) | Proposed | 2026-11-06 |

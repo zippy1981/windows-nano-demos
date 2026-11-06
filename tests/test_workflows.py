@@ -8,6 +8,7 @@ import re
 import pytest
 from repo_conventions import (
     DEFAULT_WINDOWS_VERSION,
+    DIRECT_DOCKER_WORKFLOWS,
     FORK_GUARD,
     PUBLISH_ENVIRONMENT,
     REFRESH_WORKFLOW,
@@ -122,7 +123,8 @@ def test_third_party_actions_are_pinned_to_a_commit(wf: str, job_id: str, uses: 
 
 
 def test_image_builds_only_run_through_the_reusable_workflow() -> None:
-    direct = [f"{wf}:{job_id}" for wf, job_id, job in RUN_JOBS if wf != REUSABLE_WORKFLOW and runs_docker(job)]
+    allowed = {REUSABLE_WORKFLOW, *DIRECT_DOCKER_WORKFLOWS}
+    direct = [f"{wf}:{job_id}" for wf, job_id, job in RUN_JOBS if wf not in allowed and runs_docker(job)]
     assert not direct, f"these jobs run docker directly instead of calling {REUSABLE_WORKFLOW_REF}: {direct}"
 
 

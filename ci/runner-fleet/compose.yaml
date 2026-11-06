@@ -1,0 +1,93 @@
+# The self-hosted GitHub Actions runner fleet and the artifact cache on one nat network (ADR 0015,
+# plans/runner-fleet-compose.md). Start it with Start-RunnerFleet.ps1, which pins docker compose, creates the
+# cache folders and supplies a registration token. Every setting below can be overridden from the environment.
+name: ${FLEET_PROJECT:-windows-nano-ci}
+
+# Shared by every runner. The docker pipe needs process isolation (nano-server-gh-runner/README.md).
+x-runner: &runner
+  image: ${RUNNER_IMAGE:-windows-nano-gh-runner:2022}
+  isolation: process
+  restart: unless-stopped
+  depends_on:
+    artifact-cache:
+      condition: service_healthy
+  networks:
+    - fleet
+  volumes:
+    - type: npipe
+      source: \\.\pipe\docker_engine
+      target: \\.\pipe\docker_engine
+
+x-runner-env: &runner-env
+  RUNNER_URL: https://github.com/${RUNNER_REPO:-zippy1981/windows-nano-demos}
+  RUNNER_TOKEN: ${RUNNER_TOKEN:-}
+  RUNNER_LABELS: ${RUNNER_LABELS:-nanoserver,docker}
+  # For builds that use the cache (follow-up in ADR 0015): docker build --network $ARTIFACT_CACHE_NETWORK
+  ARTIFACT_CACHE_IP: ${CACHE_IP:-172.31.250.10}
+  ARTIFACT_CACHE_NETWORK: ${FLEET_NETWORK:-windows-nano-ci}
+
+services:
+  artifact-cache:
+    image: ${CACHE_IMAGE:-windows-nano-artifact-cache:2025}
+    isolation: process
+    restart: unless-stopped
+    networks:
+      fleet:
+        ipv4_address: ${CACHE_IP:-172.31.250.10}
+        aliases:
+          - artifact-cache
+    # Host folders, so cached files and the CA survive container replacement (ADR 0014). caddy-data holds the
+    # CA private key: keep it readable only by Administrators and SYSTEM.
+    volumes:
+      - type: bind
+        source: ${CACHE_ROOT:-C:\ProgramData\windows-nano-demos\artifact-cache}\cache
+        target: C:\cache
+      - type: bind
+        source: ${CACHE_ROOT:-C:\ProgramData\windows-nano-demos\artifact-cache}\caddy-data
+        target: C:\caddy-data
+    healthcheck:
+      test: ["CMD", "curl.exe", "-fsS", "-m", "5", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 6s
+      retries: 3
+      start_period: 30s
+
+  # Registration names match the hand-started runners they replace, so GitHub keeps the same five runners.
+  runner1:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:-${COMPUTERNAME}}-nano
+
+  runner2:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:-${COMPUTERNAME}}-nano2
+
+  runner3:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:-${COMPUTERNAME}}-nano3
+
+  runner4:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:-${COMPUTERNAME}}-nano4
+
+  runner5:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:-${COMPUTERNAME}}-nano5
+
+networks:
+  fleet:
+    name: ${FLEET_NETWORK:-windows-nano-ci}
+    driver: nat
+    ipam:
+      config:
+        - subnet: ${FLEET_SUBNET:-172.31.250.0/24}
+          gateway: ${FLEET_GATEWAY:-172.31.250.1}

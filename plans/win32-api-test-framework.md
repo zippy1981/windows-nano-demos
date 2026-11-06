@@ -4,6 +4,20 @@
 
 Build a repeatable way to measure which Win32 APIs work in nanoserver, compared with servercore and with the augmented images from `plans/reactos-binaries.md` and `plans/wine-binaries.md`. Each run produces JUnit XML for GitHub, plus a machine-readable compatibility matrix (API by image by Windows version). Runs happen on the self-hosted `[self-hosted, windows, docker]` runner.
 
+## Status (2026-11-06)
+
+**Phases 1 and 2 are implemented in PR #22, which is not merged. Phase 3 is open.**
+
+PR #22 has `api-tests/` with `apiprobe.c`, the probe sources, the inventory and matrix scripts, per-image expectations for both bases on all three versions, and `api-tests.yml`. All of its checks passed on 2026-11-04.
+
+PR #22 is stacked on this plan branch, and it predates several conventions on `main`. Before it can merge, it needs:
+
+- a rebase onto `main`;
+- a home under ADR 0012: `api-tests/Dockerfile` is a Dockerfile at the repo root, which `test_no_images_in_the_repo_root` rejects. Either move it, for example to `ci/api-tests/`, or record why it isn't an image;
+- an exception for `api-tests.yml`, which runs docker directly. ADR 0009's test allows that only for the reusable build workflow and the workflows in `DIRECT_DOCKER_WORKFLOWS` (ADR 0015).
+
+The `reactos-tools` and `wine-tools` legs in PR #22's matrix wait for those images. Wine's is PR #21. ReactOS has no implementation yet.
+
 ## Summary of decisions
 
 - **Three levels, one runner.** A small C program, `apiprobe.exe`, checks each API at three levels:

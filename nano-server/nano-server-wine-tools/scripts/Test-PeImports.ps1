@@ -71,7 +71,7 @@ function Get-CString {
     [System.Text.Encoding]::ASCII.GetString($Pe.Bytes, $o, $e - $o)
 }
 
-function Get-Thunks {
+function Get-PeThunk {
     # Returns the names (or '#<ordinal>') of one import lookup table.
     param($Pe, [uint32] $TableRva)
     $o = Get-Offset $Pe $TableRva
@@ -91,7 +91,7 @@ function Get-Thunks {
     }
 }
 
-function Get-Imports {
+function Get-PeImport {
     param($Pe)
     $b = $Pe.Bytes
     $imp = $Pe.Dirs[1]
@@ -101,7 +101,7 @@ function Get-Imports {
             $ilt = [BitConverter]::ToUInt32($b, $o); $name = [BitConverter]::ToUInt32($b, $o + 12); $iat = [BitConverter]::ToUInt32($b, $o + 16)
             if ($name -eq 0) { break }
             $table = if ($ilt -ne 0) { $ilt } else { $iat }
-            [pscustomobject]@{ Dll = (Get-CString $Pe $name); Delay = $false; Names = @(Get-Thunks $Pe $table) }
+            [pscustomobject]@{ Dll = (Get-CString $Pe $name); Delay = $false; Names = @(Get-PeThunk $Pe $table) }
             $o += 20
         }
     }
@@ -111,13 +111,13 @@ function Get-Imports {
         while ($true) {
             $name = [BitConverter]::ToUInt32($b, $o + 4); $int = [BitConverter]::ToUInt32($b, $o + 16)
             if ($name -eq 0) { break }
-            [pscustomobject]@{ Dll = (Get-CString $Pe $name); Delay = $true; Names = @(Get-Thunks $Pe $int) }
+            [pscustomobject]@{ Dll = (Get-CString $Pe $name); Delay = $true; Names = @(Get-PeThunk $Pe $int) }
             $o += 32
         }
     }
 }
 
-function Get-Exports {
+function Get-PeExport {
     param($Pe)
     $b = $Pe.Bytes
     $exp = $Pe.Dirs[0]
@@ -145,12 +145,12 @@ function Find-Dll {
     return $null
 }
 
-function Get-DllExports {
+function Get-DllExport {
     param([string] $Name)
     $key = $Name.ToLowerInvariant()
     if (-not $exportCache.ContainsKey($key)) {
         $file = Find-Dll $Name
-        $exportCache[$key] = if ($file) { [pscustomobject]@{ File = $file; Exports = (Get-Exports (Read-Pe $file)) } } else { $null }
+        $exportCache[$key] = if ($file) { [pscustomobject]@{ File = $file; Exports = (Get-PeExport (Read-Pe $file)) } } else { $null }
     }
     $exportCache[$key]
 }
@@ -166,8 +166,8 @@ foreach ($f in $files) {
     $bad = @()
     $badDelay = @()
     $count = 0
-    foreach ($imp in Get-Imports $pe) {
-        $dll = Get-DllExports $imp.Dll
+    foreach ($imp in Get-PeImport $pe) {
+        $dll = Get-DllExport $imp.Dll
         foreach ($n in $imp.Names) {
             $count++
             $ok = $false

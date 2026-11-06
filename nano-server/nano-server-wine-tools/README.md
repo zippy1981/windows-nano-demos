@@ -2,18 +2,22 @@
 
 This image adds console tools that nanoserver lacks: `find`, `fc`, `where`, `whoami`, `tasklist`, `taskkill`, `start`, `cabarc` and `fsutil`. They are the **unmodified** x86_64 PE programs from WineHQ's `wine-stable` 11.0 package for Ubuntu 24.04 (noble). Wine builds every module as a real PE file, and these programs only import DLLs that nanoserver already has, so they run on real Windows without Wine itself.
 
-See [`plans/wine-binaries.md`](../plans/wine-binaries.md) for the design, and [`SOURCE.md`](SOURCE.md) for where the binaries and their source come from.
+See [`plans/wine-binaries.md`](../../plans/wine-binaries.md) for the design, and [`SOURCE.md`](SOURCE.md) for where the binaries and their source come from.
 
 ## Build
 
 ```cmd
-set WINDOWS_VERSION=2022
 build.cmd
+set WINDOWS_VERSION=2022 && build.cmd
 ```
 
-`WINDOWS_VERSION` is `2019`, `2022` or `2025`. The Wine programs are not in git. If `wine-pe\` is empty, `build.cmd` runs `fetch-wine.ps1`, which downloads the pinned `.deb`, checks its SHA-256 and extracts only the files listed in `tools.txt` with Windows 11's built-in `tar.exe`. It needs pwsh 7.
+`WINDOWS_VERSION` is `2019`, `2022` or `2025` (the default). The Wine programs are not in git. The Dockerfile's download stage runs `fetch-wine.ps1` on Server Core ltsc2025 for every Windows version, because only ltsc2025's `tar.exe` reads the zstd data in the `.deb`. The script downloads the pinned `.deb`, checks its SHA-256 and extracts only the files listed in `tools.txt`.
 
-In CI, the `extract-wine` job on `ubuntu-latest` does the same with `dpkg-deb` (`extract-wine.sh`) and passes the files to the Windows jobs as an artifact.
+## Licensing and source
+
+The Wine programs are LGPL-2.1-or-later. The image carries the licence files (`COPYING.LIB`, `LICENSE`, `AUTHORS`) and, in `C:\Program Files\wine-tools\source`, the unmodified `wine-11.0.tar.xz` release tarball with WineHQ's signature. That's the complete corresponding source, shipped with every published image. [`SOURCE.md`](SOURCE.md) has its SHA-256 and how to copy it out. The smoke test fails if any of these files is missing.
+
+In CI the image builds through the shared workflow like the others. The `extract-wine` and `build-from-source` jobs on `ubuntu-latest` only compare WineHQ's binaries with a build from the source tarball, for information.
 
 The image is tagged `windows-nano-wine-tools:<version>` and `zippy1981/windows-nano-wine-tools:<version>`.
 
@@ -32,7 +36,7 @@ Phase 1 ships only `.exe` programs, and no Wine DLLs at all.
 The tools are in `C:\Program Files\wine-tools`, which is appended to the user `PATH` after the system `PATH`, so nothing that nanoserver ships is shadowed. `WINEDEBUG=-all` is set in the image. Without it, Wine's stub code paths print `fixme:` lines to stderr.
 
 ```cmd
-docker run --rm windows-nano-wine-tools:2022 "whoami & where cmd & tasklist"
+docker run --rm windows-nano-wine-tools:2025 "whoami & where cmd & tasklist"
 ```
 
 `start` is also a `cmd` built-in, and the built-in wins. Even `start.exe` does not help, because `cmd` parses it as the built-in `start` followed by `.exe`. Call Wine's program by its full path, `"C:\Program Files\wine-tools\start.exe"`, or from a program that is not `cmd`.
@@ -51,7 +55,7 @@ These were tried on ltsc2022 with the unmodified Wine 11.0 files, and are not sh
 `C:\tests\run-tests.cmd` is baked into the image. It prints [TAP](https://testanything.org/) and exits with the number of failures. The checks use only `cmd` built-ins and nanoserver's own `findstr`, so a broken Wine tool cannot hide its own failure.
 
 ```cmd
-docker run --rm windows-nano-wine-tools:2022 C:\tests\run-tests.cmd
+docker run --rm windows-nano-wine-tools:2025 C:\tests\run-tests.cmd
 ```
 
 | # | What is tested |

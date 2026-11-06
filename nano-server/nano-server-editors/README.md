@@ -5,7 +5,7 @@ Terminal text editors that run in a Nano Server container, so the dev images her
 | Editor | Version | Command | Notes |
 | --- | --- | --- | --- |
 | [Microsoft Edit](https://github.com/microsoft/edit) | 2.0.0 | `edit` | The v2.0.0 release's `edit.exe` reports `edit version 1.2.1`. Loads `icu.dll` at run time for Unicode-aware search and word wrap. Nano Server has no `icu.dll`, so those fall back to simpler behaviour. |
-| [GNU nano](https://github.com/okibcn/nano-for-windows) (okibcn's Windows port) | 7.2 | `nano` | Built with MinGW against the UCRT. The port's last release is from April 2023. A sample `.nanorc` is in `C:\Program Files\nano`; copy it to `%USERPROFILE%\.nanorc` to use it. |
+| [GNU nano](https://github.com/okibcn/nano-for-windows) (okibcn's Windows port) | 7.2 | `nano` | **Not on ltsc2019**: it exits with `0xC0000139` (entry point not found) there, so that image leaves it out. Built with MinGW against the UCRT. The port's last release is from April 2023. A sample `.nanorc` is in `C:\Program Files\nano`; copy it to `%USERPROFILE%\.nanorc` to use it. |
 | [Helix](https://helix-editor.com/) | 25.07.1 | `hx` | Needs `vcruntime140.dll`, which the image copies from a Server Core build stage. `HELIX_RUNTIME` points at its themes and grammars. No language servers are installed. |
 
 ## Running

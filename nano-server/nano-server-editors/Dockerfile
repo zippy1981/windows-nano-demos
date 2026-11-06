@@ -70,6 +70,13 @@ COPY --from=fetch ["C:/editors/edit", "C:/Program Files/edit"]
 COPY --from=fetch ["C:/editors/nano", "C:/Program Files/nano"]
 COPY --from=fetch ["C:/editors/helix", "C:/Program Files/helix"]
 
+# The nano port can't start on ltsc2019: it exits with 0xC0000139 (STATUS_ENTRYPOINT_NOT_FOUND), because it imports
+# a function ltsc2019's DLLs don't have. Leave it out there rather than ship a program that can't run.
+ARG WINDOWS_VERSION
+USER ContainerAdministrator
+RUN if "%WINDOWS_VERSION%"=="2019" rmdir /s /q "C:\Program Files\nano"
+USER ContainerUser
+
 # Helix finds its themes and tree-sitter grammars through HELIX_RUNTIME
 ENV HELIX_RUNTIME="C:\\Program Files\\helix\\runtime"
 ENV PATH="C:\\Program Files\\edit;C:\\Program Files\\nano;C:\\Program Files\\helix;${PATH}"

@@ -28,11 +28,20 @@ function Invoke-Image {
     return $out
 }
 
+# ltsc2019 is OS build 10.0.17763; the image leaves nano out there (see the Dockerfile)
+$isLtsc2019 = (docker image inspect $Image --format '{{.OsVersion}}') -like '10.0.17763*'
+
 $checks = [ordered]@{
-    # The v2.0.0 release's edit.exe reports 1.2.1; the SHA-256 pinned in the Dockerfile identifies the build
+    # The v2.0.0 release's edit.exe reports 2.0.0 on ltsc2019 but 1.2.1 on ltsc2025; the pinned SHA-256 identifies it
     'edit --version' = 'edit version \d+\.\d+\.\d+'
     'nano --version' = 'GNU nano for Windows 64 bits, v7\.2-22\.1'
     'hx --version'   = 'helix 25\.07\.1'
+}
+if ($isLtsc2019) {
+    $checks.Remove('nano --version')
+    $listing = docker run --rm $Image cmd /c 'dir /b "C:\Program Files"' 2>&1 | Out-String
+    if ($listing -match '(?m)^nano\s*$') { throw 'nano is in the ltsc2019 image, where it exits with 0xC0000139' }
+    Write-Host 'ok: nano is left out on ltsc2019'
 }
 foreach ($check in $checks.GetEnumerator()) {
     $out = Invoke-Image @($check.Key -split ' ')

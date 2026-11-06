@@ -1,0 +1,61 @@
+# Convention tests for workflows, Dockerfiles and build scripts (ADR 0011), run with uv (ADR 0010)
+name: Repo tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # The CPython version uv downloads (3.14: PyYAML 6.0.3 has no 3.15 wheels yet) and runs the tests with. only-managed stops uv from using a Python already on the runner.
+  UV_PYTHON: '3.14'
+  UV_PYTHON_PREFERENCE: only-managed
+
+jobs:
+  pytest:
+    # No docker, so a GitHub-hosted runner: nothing here touches the self-hosted machine
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Install
+        run: uv sync --locked
+
+      - name: Test
+        # -q: Codecov Test Analytics keeps the per-test record, so the log only needs failures and the coverage gate
+        run: >-
+          uv run pytest -q --cov --cov-report=term-missing:skip-covered --cov-report=xml
+          --cov-report=markdown-append:$GITHUB_STEP_SUMMARY --junitxml=junit.xml -o junit_family=legacy
+
+      # Coverage and test results go to Codecov (plans/codecov.md). The local 95% gate in the Test step is the one
+      # that blocks; an upload failure fails the job only on main, so a Codecov outage never blocks a pull request.
+      # Fork pull requests get no secrets and upload tokenless, which Codecov allows for public repositories.
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          disable_search: true
+          flags: python
+          fail_ci_if_error: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          files: junit.xml
+          disable_search: true
+          flags: python
+          fail_ci_if_error: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Lint Python
+        run: |
+          uv run --with ruff ruff check .
+          uv run --with ruff ruff format --check .

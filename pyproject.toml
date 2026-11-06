@@ -1,0 +1,43 @@
+# Python tooling for this repo, managed with uv (ADR 0010). This isn't a Python package.
+# The interpreter version comes from the UV_PYTHON environment variable, for example:
+#   UV_PYTHON=3.14 UV_PYTHON_PREFERENCE=only-managed uv run pytest
+[project]
+name = "windows-nano-demos-repo-tests"
+version = "0.1.0"
+description = "Convention tests for this repo's workflows, Dockerfiles and build scripts (ADR 0011)"
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.7.0",
+    "pytest>=9.0",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests", "scripts"]
+# Quiet by default: failures and errors only, short tracebacks (plans/codecov.md, "Reducing tokens")
+addopts = "-q -rfE --no-header --tb=short"
+
+[tool.ruff]
+line-length = 120
+
+# Coverage of the scripts the tests exercise. `uv run pytest --cov` (CI and pre-commit) fails below fail_under;
+# a plain `uv run pytest -k ...` doesn't measure coverage, so running a few tests still works.
+[tool.coverage.run]
+# coverage.xml paths relative to the repo root, so Codecov maps them the same from any machine
+relative_files = true
+source = ["scripts"]
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+skip_covered = false
+exclude_also = ['if __name__ == "__main__":']

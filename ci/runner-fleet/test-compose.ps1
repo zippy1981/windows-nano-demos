@@ -74,7 +74,12 @@ try {
     & $ComposeExe -f $composeFile config --quiet
     if ($LASTEXITCODE) { throw "compose.yaml is not valid: $LASTEXITCODE" }
     Invoke-Compose config --quiet
-    'compose.yaml and compose.yaml + compose.ci.yaml are valid' | Out-Host
+    # Start-RepoRunners.ps1's file only needs to validate: its runners would register with another repository.
+    $env:RUNNER_REPO = 'zippy1981/windows-nano-baseimages'
+    & $ComposeExe -f (Join-Path $PSScriptRoot 'compose.runners.yaml') config --quiet
+    if ($LASTEXITCODE) { throw "compose.runners.yaml is not valid: $LASTEXITCODE" }
+    Remove-Item Env:RUNNER_REPO
+    'compose.yaml, compose.yaml + compose.ci.yaml and compose.runners.yaml are valid' | Out-Host
 
     if ($builtImage) {
         docker build --memory 4g -t $builtImage (Join-Path $PSScriptRoot '..\..\nano-server\nano-server-artifact-cache') | Out-Host

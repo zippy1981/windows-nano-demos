@@ -1,0 +1,59 @@
+# Extra self-hosted runners for another repository, on the fleet's network next to its artifact cache. A runner on a
+# personal account serves exactly one repository, so each repository gets its own project from this file. Start it
+# with Start-RepoRunners.ps1, which supplies the repository, the project, the names and a registration token.
+# The fleet (compose.yaml) must be running: this file joins its network and uses its cache, it doesn't start them.
+name: ${FLEET_PROJECT:?set FLEET_PROJECT, for example windows-nano-baseimages}
+
+x-runner: &runner
+  image: ${RUNNER_IMAGE:-windows-nano-gh-runner:2022}
+  isolation: process
+  restart: unless-stopped
+  networks:
+    - fleet
+  volumes:
+    - type: npipe
+      source: \\.\pipe\docker_engine
+      target: \\.\pipe\docker_engine
+
+x-runner-env: &runner-env
+  RUNNER_URL: https://github.com/${RUNNER_REPO:?set RUNNER_REPO, for example zippy1981/windows-nano-baseimages}
+  RUNNER_TOKEN: ${RUNNER_TOKEN:-}
+  RUNNER_LABELS: ${RUNNER_LABELS:-nanoserver,docker}
+  ARTIFACT_CACHE_IP: ${CACHE_IP:-172.31.250.10}
+  ARTIFACT_CACHE_NETWORK: ${FLEET_NETWORK:-windows-nano-ci}
+
+services:
+  runner1:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:?set RUNNER_NAME_PREFIX}1
+
+  runner2:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:?set RUNNER_NAME_PREFIX}2
+
+  runner3:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:?set RUNNER_NAME_PREFIX}3
+
+  runner4:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:?set RUNNER_NAME_PREFIX}4
+
+  runner5:
+    <<: *runner
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: ${RUNNER_NAME_PREFIX:?set RUNNER_NAME_PREFIX}5
+
+networks:
+  fleet:
+    name: ${FLEET_NETWORK:-windows-nano-ci}
+    external: true

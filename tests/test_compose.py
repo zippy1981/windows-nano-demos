@@ -171,3 +171,62 @@ class TestDirectDockerWorkflow:
     def test_triggers_on_the_fleet_folder(self, workflow: str, event: str) -> None:
         paths = load_workflow(WORKFLOWS_DIR / workflow)["on"][event]["paths"]
         assert f"{Path(FLEET_DIR).relative_to(FLEET_DIR.parent.parent).as_posix()}/**" in paths
+
+
+# --- Runners for other repositories (compose.runners.yaml, Start-RepoRunners.ps1) ---
+
+REPO_RUNNERS = load_compose("compose.runners.yaml")
+REPO_SERVICES = REPO_RUNNERS["services"]
+
+
+def test_repo_runners_file_starts_only_runners() -> None:
+    assert sorted(REPO_SERVICES) == RUNNERS, "the cache belongs to the fleet; this file must not start another one"
+
+
+def test_repo_runners_join_the_fleet_network() -> None:
+    network = REPO_RUNNERS["networks"]["fleet"]
+    assert network["external"] is True, "join the fleet's network, never create a second one on its subnet"
+    assert default(network["name"]) == default(NETWORK["name"])
+
+
+@pytest.mark.parametrize("variable", ["FLEET_PROJECT", "RUNNER_REPO", "RUNNER_NAME_PREFIX"])
+def test_repo_runners_require_their_settings(variable: str) -> None:
+    text = (FLEET_DIR / "compose.runners.yaml").read_text(encoding="utf-8")
+    assert f"${{{variable}:?" in text, f"{variable} must be required, so the runners never default to the fleet's"
+
+
+@pytest.mark.parametrize("runner", RUNNERS)
+class TestRepoRunner:
+    def test_uses_process_isolation_and_the_docker_pipe(self, runner: str) -> None:
+        service = REPO_SERVICES[runner]
+        assert service["isolation"] == "process"
+        assert {"type": "npipe", "source": PIPE, "target": PIPE} in service["volumes"]
+
+    def test_has_no_bind_mounts(self, runner: str) -> None:
+        binds = [v for v in REPO_SERVICES[runner]["volumes"] if v.get("type") != "npipe"]
+        assert not binds, f"{runner} must not bind-mount host folders (CLAUDE.md): {binds}"
+
+    def test_token_comes_from_the_environment(self, runner: str) -> None:
+        token = REPO_SERVICES[runner]["environment"]["RUNNER_TOKEN"]
+        assert re.fullmatch(r"\$\{RUNNER_TOKEN(:-)?\}", token)
+
+    def test_gets_the_fleet_cache_address(self, runner: str) -> None:
+        env = REPO_SERVICES[runner]["environment"]
+        assert ipaddress.ip_address(default(env["ARTIFACT_CACHE_IP"])) == CACHE_IP
+        assert default(env["ARTIFACT_CACHE_NETWORK"]) == default(NETWORK["name"])
+
+    def test_name_is_the_prefix_and_its_number(self, runner: str) -> None:
+        name = REPO_SERVICES[runner]["environment"]["RUNNER_NAME"]
+        assert name.startswith("${RUNNER_NAME_PREFIX:?") and name.endswith("}" + runner.removeprefix("runner"))
+
+
+@pytest.mark.parametrize(
+    ("parameter", "expected"),
+    [
+        ("RunnerImage", default(SERVICES["runner1"]["image"])),
+        ("Network", default(NETWORK["name"])),
+        ("CacheIp", str(CACHE_IP)),
+    ],
+)
+def test_repo_runners_script_defaults_match_the_fleet(parameter: str, expected: str) -> None:
+    assert _ps_default("Start-RepoRunners.ps1", parameter) == expected

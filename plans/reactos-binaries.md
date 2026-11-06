@@ -6,6 +6,21 @@ Build a nanoserver image variant, `nano-server-reactos-tools/`, that adds the co
 
 This plan is based on an audit and a prototype that were run on the host (Windows 11 build 26300, nanoserver `ltsc2022` 10.0.20348.5773, process isolation). The prototype results are in [Prototype results](#prototype-results).
 
+## Status (2026-11-06)
+
+**Not started: no branch or PR implements it.**
+
+Since this plan was written, the repo's conventions have changed. An implementation now needs:
+
+- the folder `nano-server/nano-server-reactos-tools/` (ADR 0012);
+- `ARG WINDOWS_VERSION=2025`, not 2022 (ADR 0008);
+- a small caller of `build-windows-image.yml` plus a `smoke-test.ps1 -Image <tag>`, instead of its own CI job (ADR 0009);
+- the Dockerfile header and `ARG` comments (dockerfile-docs skill).
+
+The pinned nightly, `0.4.17-dev-1302`, should be checked again, because nightlies expire. That's why the release-asset mirror in phase 1 matters.
+
+The Wine image (`plans/wine-binaries.md`, PR #21) covers part of the same need, without a shim or PE patching: `find`, `fc`, `where`, `whoami`, `tasklist`, `taskkill`, `fsutil`, plus Wine's `start` and `cabarc`. This plan is still the only source of `more`, `tree`, `comp`, `chcp`, `mode`, `help`, `replace`, `doskey`, `cacls`, `nslookup`, `whois` and `subst`, so it remains worth doing, but after the Wine image lands.
+
 ## Summary of decisions
 
 - **Source:** the ReactOS **nightly x64 MSVC boot CD** from `https://iso.reactos.org/bootcd/`. ReactOS releases (0.4.16 and older) are x86 only, and nanoserver has no WoW64, so 32-bit binaries cannot run. The build is pinned by revision and SHA-256.

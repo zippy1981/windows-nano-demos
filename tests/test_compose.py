@@ -1,0 +1,173 @@
+"""The runner fleet's Compose files keep the fleet safe and the CI test isolated (ADR 0015, plans/runner-fleet-compose.md)."""
+
+from __future__ import annotations
+
+import ipaddress
+import re
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+from repo_conventions import COMPOSE_TEST, DIRECT_DOCKER_WORKFLOWS, FLEET_DIR, WORKFLOWS_DIR, load_workflow
+
+PIPE = r"\\.\pipe\docker_engine"
+RUNNERS = [f"runner{i}" for i in range(1, 6)]
+
+
+class _ComposeLoader(yaml.SafeLoader):
+    """SafeLoader that also reads Compose's !override and !reset merge tags as plain values."""
+
+
+def _plain(loader: yaml.SafeLoader, _suffix: str, node: yaml.Node) -> Any:
+    if isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node, deep=True)
+    if isinstance(node, yaml.MappingNode):
+        return loader.construct_mapping(node, deep=True)
+    return loader.construct_scalar(node)
+
+
+_ComposeLoader.add_multi_constructor("!", _plain)
+
+
+def load_compose(name: str) -> dict[str, Any]:
+    return yaml.load((FLEET_DIR / name).read_text(encoding="utf-8"), Loader=_ComposeLoader)
+
+
+def default(value: str) -> str:
+    """The value Compose uses when the variable is unset: ${VAR:-default} -> default."""
+    return re.sub(r"\$\{\w+:-([^}]*)\}", r"\1", value)
+
+
+FLEET = load_compose("compose.yaml")
+CI = load_compose("compose.ci.yaml")
+SERVICES = FLEET["services"]
+CACHE = SERVICES["artifact-cache"]
+NETWORK = FLEET["networks"]["fleet"]
+CACHE_IP = ipaddress.ip_address(default(CACHE["networks"]["fleet"]["ipv4_address"]))
+SUBNET = ipaddress.ip_network(default(NETWORK["ipam"]["config"][0]["subnet"]))
+
+
+def test_fleet_has_the_cache_and_five_runners() -> None:
+    assert sorted(SERVICES) == sorted(["artifact-cache", *RUNNERS])
+
+
+@pytest.mark.parametrize("runner", RUNNERS)
+class TestRunner:
+    def test_uses_process_isolation_and_the_docker_pipe(self, runner: str) -> None:
+        service = SERVICES[runner]
+        assert service["isolation"] == "process", "the docker pipe can only be mounted with process isolation"
+        assert {"type": "npipe", "source": PIPE, "target": PIPE} in service["volumes"]
+
+    def test_has_no_bind_mounts(self, runner: str) -> None:
+        binds = [v for v in SERVICES[runner]["volumes"] if v.get("type") != "npipe"]
+        assert not binds, f"{runner} must not bind-mount host folders (CLAUDE.md): {binds}"
+
+    def test_restarts_and_waits_for_a_healthy_cache(self, runner: str) -> None:
+        service = SERVICES[runner]
+        assert service["restart"] == "unless-stopped"
+        assert service["depends_on"] == {"artifact-cache": {"condition": "service_healthy"}}
+        assert service["networks"] == ["fleet"]
+
+    def test_token_comes_from_the_environment(self, runner: str) -> None:
+        token = SERVICES[runner]["environment"]["RUNNER_TOKEN"]
+        assert re.fullmatch(r"\$\{RUNNER_TOKEN(:-)?\}", token), f"{runner} has a literal registration token"
+
+    def test_gets_the_cache_address(self, runner: str) -> None:
+        env = SERVICES[runner]["environment"]
+        assert ipaddress.ip_address(default(env["ARTIFACT_CACHE_IP"])) == CACHE_IP
+        assert default(env["ARTIFACT_CACHE_NETWORK"]) == default(NETWORK["name"])
+
+
+def test_runner_names_match_the_runners_they_replace() -> None:
+    names = [SERVICES[r]["environment"]["RUNNER_NAME"] for r in RUNNERS]
+    suffixes = [n.rsplit("}", 1)[-1] for n in names]
+    assert suffixes == ["-nano", "-nano2", "-nano3", "-nano4", "-nano5"], "same names as run-runner.ps1 used"
+    assert all(n.startswith("${RUNNER_NAME_PREFIX:-${COMPUTERNAME}}") for n in names)
+
+
+def test_cache_has_a_fixed_address_inside_the_fleet_subnet() -> None:
+    assert NETWORK["driver"] == "nat"
+    assert CACHE_IP in SUBNET
+    assert ipaddress.ip_address(default(NETWORK["ipam"]["config"][0]["gateway"])) in SUBNET
+    assert "artifact-cache" in CACHE["networks"]["fleet"]["aliases"]
+
+
+def test_cache_has_a_healthcheck_on_healthz() -> None:
+    assert "http://localhost:8080/healthz" in CACHE["healthcheck"]["test"]
+
+
+@pytest.mark.parametrize("target", [r"C:\cache", r"C:\caddy-data"])
+def test_cache_keeps_its_folders_on_the_host(target: str) -> None:
+    (mount,) = [v for v in CACHE["volumes"] if v["target"] == target]
+    assert mount["type"] == "bind"
+    assert default(mount["source"]).startswith("C:\\ProgramData\\windows-nano-demos\\artifact-cache\\")
+
+
+@pytest.mark.parametrize("service", sorted(CI["services"]))
+def test_ci_overrides_never_restart(service: str) -> None:
+    assert CI["services"][service]["restart"] == "no"
+
+
+def test_ci_cache_uses_throwaway_volumes_not_host_folders() -> None:
+    volumes = CI["services"]["artifact-cache"]["volumes"]
+    assert {v["target"] for v in volumes} == {r"C:\cache", r"C:\caddy-data"}
+    assert all(v["type"] == "volume" for v in volumes)
+    assert "!override" in (FLEET_DIR / "compose.ci.yaml").read_text(encoding="utf-8"), "replace, don't merge, the binds"
+
+
+def test_ci_runner_checks_connectivity_instead_of_registering() -> None:
+    command = " ".join(CI["services"]["runner1"]["entrypoint"])
+    assert "start.ps1" not in command
+    assert "docker version" in command
+    assert "runner check passed" in command
+
+
+def test_ci_starts_only_runner1() -> None:
+    assert set(CI["services"]) == {"artifact-cache", "runner1"}
+    script = (FLEET_DIR / COMPOSE_TEST).read_text(encoding="utf-8")
+    for other in RUNNERS[1:]:
+        assert other not in script
+
+
+def _ps_default(script: str, name: str) -> str:
+    match = re.search(rf"\[string\]\${name}\s*=\s*'([^']+)'", (FLEET_DIR / script).read_text(encoding="utf-8"))
+    assert match, f"{script} has no default for -{name}"
+    return match.group(1)
+
+
+def test_ci_test_uses_a_different_subnet_from_the_fleet() -> None:
+    subnet = ipaddress.ip_network(_ps_default(COMPOSE_TEST, "Subnet"))
+    assert not subnet.overlaps(SUBNET), "a CI run must not collide with the running fleet's network"
+    assert ipaddress.ip_address(_ps_default(COMPOSE_TEST, "CacheIp")) in subnet
+    assert ipaddress.ip_address(_ps_default(COMPOSE_TEST, "Gateway")) in subnet
+
+
+def test_compose_binary_is_pinned_by_version_and_sha256() -> None:
+    text = (FLEET_DIR / "Install-Compose.ps1").read_text(encoding="utf-8")
+    assert re.search(r"\$version = 'v\d+\.\d+\.\d+'", text)
+    assert re.search(r"\$sha256 = '[0-9a-f]{64}'", text)
+
+
+@pytest.mark.parametrize("image", ["RunnerImage", "CacheImage"])
+def test_start_script_defaults_match_the_compose_file(image: str) -> None:
+    key = {"RunnerImage": SERVICES["runner1"]["image"], "CacheImage": CACHE["image"]}[image]
+    assert _ps_default("Start-RunnerFleet.ps1", image) == default(key)
+
+
+@pytest.mark.parametrize("workflow", sorted(DIRECT_DOCKER_WORKFLOWS))
+class TestDirectDockerWorkflow:
+    def test_exists(self, workflow: str) -> None:
+        assert (WORKFLOWS_DIR / workflow).is_file()
+
+    def test_runs_the_compose_test_one_at_a_time(self, workflow: str) -> None:
+        wf = load_workflow(WORKFLOWS_DIR / workflow)
+        assert wf["concurrency"]["cancel-in-progress"] is False
+        assert "github.event" not in wf["concurrency"]["group"], "one group for the whole repo: the subnet is fixed"
+        steps = [s.get("run", "") for job in wf["jobs"].values() for s in job["steps"]]
+        assert any(COMPOSE_TEST in s for s in steps)
+
+    @pytest.mark.parametrize("event", ["push", "pull_request"])
+    def test_triggers_on_the_fleet_folder(self, workflow: str, event: str) -> None:
+        paths = load_workflow(WORKFLOWS_DIR / workflow)["on"][event]["paths"]
+        assert f"{Path(FLEET_DIR).relative_to(FLEET_DIR.parent.parent).as_posix()}/**" in paths

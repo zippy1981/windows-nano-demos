@@ -30,6 +30,20 @@ The CI test uses `172.31.251.0/24` and a `ci-compose-<run id>` project, so it ne
 - Compose names the containers `windows-nano-ci-runner1-1` and so on, so they never clash with the old `DEARING-HP-Z-nano*` containers.
 - Each runner starts only after the cache is healthy. A runner that is recreated, for example after an image change, registers again with the token `Start-RunnerFleet.ps1` supplies. Run that script, not raw `compose up`.
 
+## Runners for other repositories
+
+A runner on a personal account serves exactly one repository, so the fleet's five runners only take `windows-nano-demos` jobs. To give another repository its own runners on the same host, network and cache, start them from `compose.runners.yaml` with `Start-RepoRunners.ps1`:
+
+```powershell
+./ci/runner-fleet/Start-RepoRunners.ps1 -Repo zippy1981/windows-nano-baseimages   # 2 runners: <COMPUTERNAME>-base1, -base2
+```
+
+- Each repository gets its own compose project, named after the repository (`windows-nano-baseimages`), so `compose down` on one never touches another or the fleet.
+- The runners join the fleet's `windows-nano-ci` network and get the same `ARTIFACT_CACHE_IP` and `ARTIFACT_CACHE_NETWORK`. The fleet must be running first; the script checks for the network.
+- They don't wait for the cache's health, because the cache belongs to another project. `restart: unless-stopped` brings them back after a reboot either way.
+- `-Count` (1–5, default 2), `-NamePrefix`, `-RunnerImage` and `-WhatIf` work as in `Start-RunnerFleet.ps1`.
+- To stop them: `& (./ci/runner-fleet/Install-Compose.ps1) -p windows-nano-baseimages down`. Then remove the runners under the repository's **Settings → Actions → Runners**.
+
 ## Cutover
 
 Run these on the host, in an elevated PowerShell 7 that has `gh` logged in. Never run them from a workflow: a job would stop its own runner.
@@ -79,7 +93,7 @@ A plain `docker start` of the old containers isn't enough. The fleet's `--replac
 
 The `Compose files` workflow (`.github/workflows/compose.yml`) runs `test-compose.ps1` on every change here or to the cache image. It does this:
 
-1. Validates `compose.yaml`, alone and with `compose.ci.yaml`.
+1. Validates `compose.yaml`, alone and with `compose.ci.yaml`, and `compose.runners.yaml`.
 2. Builds the cache image.
 3. Downloads an artifact through the cache twice (MISS, then HIT), restarts the cache, and checks that its address didn't change and the artifact is still a HIT.
 4. Runs `runner1`'s connectivity check (docker pipe, cache by address and by name, GitHub).

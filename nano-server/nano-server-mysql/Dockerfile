@@ -1,4 +1,5 @@
 # windows-nano-mysql: MySQL 8.4 LTS server and client tools on Nano Server, configured with MYSQL_* variables.
+# Docker Hub categories: databases-and-storage
 #
 # Build from this folder (build.cmd does the same, and also tags zippy1981/windows-nano-mysql):
 #   docker build --memory 4g --build-arg WINDOWS_VERSION=2022 -t windows-nano-mysql:2022 .

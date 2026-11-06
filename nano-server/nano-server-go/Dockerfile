@@ -1,4 +1,5 @@
 # windows-nano-go: Go, MinGit and the micro editor on Nano Server. CI builds the three newest Go releases.
+# Docker Hub categories: languages-and-frameworks, developer-tools
 #
 # Build from this folder (build.cmd does the same, and also tags zippy1981/windows-nano-go):
 #   docker build --memory 4g --build-arg WINDOWS_VERSION=2022 --build-arg GO_VERSION=1.26.10 -t windows-nano-go:2022 .

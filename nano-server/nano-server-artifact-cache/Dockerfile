@@ -1,4 +1,5 @@
-# windows-nano-artifact-cache: Caddy HTTPS caching proxy for build artifacts, ltsc2025 only (issue #24, ADR 0014).
+# windows-nano-artifact-cache: Caddy HTTPS caching proxy that keeps build downloads for Windows CI runners (ltsc2025).
+# Docker Hub categories: integration-and-delivery, networking, web-servers
 #
 # It TLS-intercepts allowlisted download hosts with its own CA and caches artifact files on disk,
 # so repeated Windows image builds download Go, Rust, MinGit and similar pinned files once.

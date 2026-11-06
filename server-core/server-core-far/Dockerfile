@@ -1,4 +1,5 @@
 # windows-servercore-far: Far Manager 3 (x64) on Server Core. Run it with docker run -it.
+# Docker Hub categories: developer-tools
 #
 # Build from this folder (build.cmd does the same, and also tags zippy1981/windows-servercore-far):
 #   docker build --memory 4g --build-arg WINDOWS_VERSION=2022 -t windows-servercore-far:2022 .

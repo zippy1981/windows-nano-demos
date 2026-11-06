@@ -52,6 +52,8 @@ ACTION_STEP_IDS = [f"{wf}:{job_id}:{uses}" for wf, job_id, uses in ACTION_STEPS]
 PATH_EVENTS = ["push", "pull_request"]
 # Reads the Docker Hub secrets only to report the token scope; it changes nothing on Docker Hub
 TOKEN_CHECK_WORKFLOW = "dockerhub-token-check.yml"
+# Updates repository documentation only (issue #56): descriptions, categories and overviews, never images
+DOCS_SYNC_WORKFLOW = "dockerhub-docs.yml"
 (_REUSABLE_JOB,) = jobs(workflows()[REUSABLE_WORKFLOW]).values()
 PUBLISH_STEPS = [s for s in _REUSABLE_JOB["steps"] if "docker push" in s.get("run", "")]
 
@@ -286,7 +288,11 @@ def test_reusable_workflow_rejects_version_and_base_in_build_args() -> None:
 
 @pytest.mark.parametrize(
     "path",
-    [p for p in workflow_paths() if p.name not in {REUSABLE_WORKFLOW, REFRESH_WORKFLOW, TOKEN_CHECK_WORKFLOW}],
+    [
+        p
+        for p in workflow_paths()
+        if p.name not in {REUSABLE_WORKFLOW, REFRESH_WORKFLOW, TOKEN_CHECK_WORKFLOW, DOCS_SYNC_WORKFLOW}
+    ],
     ids=lambda p: p.name,
 )
 def test_docker_hub_secrets_are_only_used_by_the_publishing_workflows(path) -> None:
@@ -385,3 +391,22 @@ def test_the_token_check_only_runs_by_hand_in_the_publish_environment() -> None:
     assert "docker push" not in json.dumps(job) and "DELETE" not in json.dumps(job), (
         f"{TOKEN_CHECK_WORKFLOW} must not change anything on Docker Hub"
     )
+
+
+class TestDocsSyncWorkflow:
+    @pytest.fixture(scope="class")
+    def job(self) -> dict:
+        (job,) = jobs(workflows()[DOCS_SYNC_WORKFLOW]).values()
+        return job
+
+    def test_only_runs_by_hand(self) -> None:
+        assert set(workflows()[DOCS_SYNC_WORKFLOW]["on"]) == {"workflow_dispatch"}
+
+    def test_only_runs_on_main_in_the_publish_environment(self, job: dict) -> None:
+        assert job.get("environment") == PUBLISH_ENVIRONMENT
+        assert normalize_expression(str(job.get("if", ""))) == "github.ref == 'refs/heads/main'"
+
+    def test_only_updates_documentation(self, job: dict) -> None:
+        text = json.dumps(job)
+        assert "Publish-DockerHubDocs.ps1" in text
+        assert "docker push" not in text and "DELETE" not in text, f"{DOCS_SYNC_WORKFLOW} must not push or delete"

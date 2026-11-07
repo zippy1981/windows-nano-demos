@@ -4,9 +4,11 @@ Drains and stops the GitHub Actions runner containers running on this host.
 .DESCRIPTION
 Selects running containers whose image is windows-nano-gh-runner, or whose name matches -NamePattern.
 Containers that belong to a Compose project (the runner fleet) are skipped unless -IncludeFleet.
+-Container instead selects exactly the named containers, fleet or not (Set-RunnerCount.ps1 uses it).
 
-For each one it reads the runner's registration name (RUNNER_NAME, or the container name), and stops the
-container with docker stop once GitHub reports that runner idle, so no job is cut off. Runners GitHub
+For each one it reads the runner's registration name (RUNNER_NAME, or the container name) and repository
+(RUNNER_URL, or -Repo), and stops the container with docker stop once GitHub reports that runner idle in
+that repository, so no job is cut off. Runners GitHub
 doesn't know count as idle. Runners still busy after -DrainMinutes are left running, and the script
 throws, unless -Force, which stops them anyway.
 
@@ -16,12 +18,16 @@ Run it on the host, never from a workflow job: a job would stop its own runner.
 ./ci/runner-fleet/Stop-ActionRunners.ps1 -WhatIf
 .EXAMPLE
 ./ci/runner-fleet/Stop-ActionRunners.ps1 -DrainMinutes 90
+.EXAMPLE
+./ci/runner-fleet/Stop-ActionRunners.ps1 -Container windows-nano-ci-runner5-1
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string]$Repo = 'zippy1981/windows-nano-demos',
     [string]$NamePattern = "$env:COMPUTERNAME-nano*",
     [string]$ImagePattern = '*windows-nano-gh-runner*',
+    # Exactly these containers, instead of selecting by -NamePattern and -ImagePattern.
+    [string[]]$Container,
     [ValidateRange(0, 720)][int]$DrainMinutes = 60,
     [ValidateRange(1, 300)][int]$PollSeconds = 15,
     [ValidateRange(1, 600)][int]$StopTimeoutSeconds = 60,
@@ -31,25 +37,34 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-function Get-RunnerContainer([string]$NamePattern, [string]$ImagePattern, [bool]$IncludeFleet) {
+function Get-RunnerContainer([string]$NamePattern, [string]$ImagePattern, [bool]$IncludeFleet, [string[]]$Container,
+    [string]$DefaultRepo) {
     $lines = docker ps --format '{{.Names}}|{{.Image}}|{{.Label "com.docker.compose.project"}}'
     if ($LASTEXITCODE) { throw "docker ps failed: $LASTEXITCODE" }
     foreach ($line in $lines) {
         $name, $image, $project = $line -split '\|', 3
-        if (-not ($image -like $ImagePattern -or $name -like $NamePattern)) { continue }
-        if ($project -and -not $IncludeFleet) { continue }
+        if ($Container) {
+            if ($Container -notcontains $name) { continue }
+        }
+        elseif (-not ($image -like $ImagePattern -or $name -like $NamePattern) -or ($project -and -not $IncludeFleet)) {
+            continue
+        }
         $envVars = docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' $name
         $runnerName = ($envVars | Where-Object { $_ -like 'RUNNER_NAME=*' } | Select-Object -First 1) -replace '^RUNNER_NAME=', ''
-        [pscustomobject]@{ Container = $name; Image = $image; RunnerName = $runnerName ? $runnerName : $name }
+        $url = ($envVars | Where-Object { $_ -like 'RUNNER_URL=*' } | Select-Object -First 1) -replace '^RUNNER_URL=', ''
+        $runnerRepo = if ($url -match '^https://github\.com/([^/]+/[^/]+?)/?$') { $Matches[1] } else { $DefaultRepo }
+        [pscustomobject]@{ Container = $name; Image = $image; RunnerName = $runnerName ? $runnerName : $name; Repo = $runnerRepo }
     }
 }
 
-# Registration name -> busy, for every runner GitHub knows.
-function Get-BusyMap([string]$Repo) {
-    $json = gh api "repos/$Repo/actions/runners" --paginate --jq '.runners[] | {name, busy}'
-    if ($LASTEXITCODE) { throw "listing the runners of $Repo failed: $LASTEXITCODE" }
+# "repository/registration name" -> busy, for every runner GitHub knows in those repositories.
+function Get-BusyMap([string[]]$Repos) {
     $map = @{}
-    foreach ($line in $json) { $r = $line | ConvertFrom-Json; $map[$r.name] = [bool]$r.busy }
+    foreach ($repo in $Repos) {
+        $json = gh api "repos/$repo/actions/runners" --paginate --jq '.runners[] | {name, busy}'
+        if ($LASTEXITCODE) { throw "listing the runners of $repo failed: $LASTEXITCODE" }
+        foreach ($line in $json) { $r = $line | ConvertFrom-Json; $map["$repo/$($r.name)"] = [bool]$r.busy }
+    }
     $map
 }
 
@@ -77,19 +92,21 @@ $stopTarget = {
     [pscustomobject]@{ Container = $Target.Container; RunnerName = $Target.RunnerName; Result = "$result$Note" }
 }
 
-$pending = [Collections.Generic.List[object]]@(Get-RunnerContainer $NamePattern $ImagePattern $IncludeFleet.IsPresent)
+$pending = [Collections.Generic.List[object]]@(Get-RunnerContainer $NamePattern $ImagePattern $IncludeFleet.IsPresent $Container $Repo)
 if (-not $pending.Count) {
     'No runner containers are running.' | Out-Host
     return
 }
+$notRunning = $Container | Where-Object { $pending.Container -notcontains $_ }
+if ($notRunning) { "Not running, so nothing to stop: $($notRunning -join ', ')" | Out-Host }
 "Runner containers to stop: $($pending.Container -join ', ')" | Out-Host
 
 $deadline = (Get-Date).AddMinutes($DrainMinutes)
 $results = [Collections.Generic.List[object]]::new()
 while ($pending.Count) {
-    $busy = Get-BusyMap $Repo
+    $busy = Get-BusyMap @($pending.Repo | Sort-Object -Unique)
     foreach ($target in @($pending)) {
-        if ($busy[$target.RunnerName]) { continue }
+        if ($busy["$($target.Repo)/$($target.RunnerName)"]) { continue }
         $results.Add((& $stopTarget $target))
         [void]$pending.Remove($target)
     }

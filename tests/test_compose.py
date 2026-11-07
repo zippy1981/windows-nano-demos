@@ -230,3 +230,24 @@ class TestRepoRunner:
 )
 def test_repo_runners_script_defaults_match_the_fleet(parameter: str, expected: str) -> None:
     assert _ps_default("Start-RepoRunners.ps1", parameter) == expected
+
+
+# --- Set-RunnerCount.ps1 scales runner services only, and drains through Stop-ActionRunners.ps1 ---
+
+SCALE_SCRIPT = (FLEET_DIR / "Set-RunnerCount.ps1").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("file", ["compose.yaml", "compose.runners.yaml"])
+def test_set_runner_count_matches_every_runner_service_and_nothing_else(file: str) -> None:
+    pattern = re.search(r"\$service -match '([^']+)'", SCALE_SCRIPT).group(1)
+    for service in load_compose(file)["services"]:
+        assert bool(re.match(pattern, service)) == service.startswith("runner"), f"{file}: {service}"
+
+
+def test_set_runner_count_stops_through_the_draining_stop_script() -> None:
+    assert "Stop-ActionRunners.ps1" in SCALE_SCRIPT
+    assert "docker stop" not in SCALE_SCRIPT, "stop runners only after they finish their jobs"
+
+
+def test_set_runner_count_points_at_the_fleet_start_script_for_the_fleet_project() -> None:
+    assert f"'{default(FLEET['name'])}'" in SCALE_SCRIPT

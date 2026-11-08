@@ -111,6 +111,4 @@ def test_opencode_wrapper_permissions_mirror_the_claude_tools(name: str) -> None
     permission = front_matter(OPENCODE_AGENTS / f"{name}.md")["permission"]
     for key in MANAGED_PERMISSIONS:
         expected = "allow" if key in allowed else "deny"
-        assert permission.get(key) == expected, (
-            f"{name}: set permission.{key} to {expected} to mirror tools: {tools}"
-        )
+        assert permission.get(key) == expected, f"{name}: set permission.{key} to {expected} to mirror tools: {tools}"

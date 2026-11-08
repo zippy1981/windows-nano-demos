@@ -14,8 +14,11 @@ if not exist "%WORK%" mkdir "%WORK%"
 rem ReactOS find only handled a relative file name in the prototype, so run from the fixtures folder.
 cd /d %FIX%
 
+rem ReactOS find skips files with the offline attribute, which docker-copied fixtures can carry,
+rem so search a copy made inside the container (the same reason test 19 builds its file in C:\work).
+copy /y %FIX%\a.txt %WORK%\a.txt > NUL
 set "D=1 find in a file"& set "RX=^one"& set RXI=
-"%RT%\find.exe" "one" %FIX%\a.txt > "%OUT%" 2>&1
+"%RT%\find.exe" "one" %WORK%\a.txt > "%OUT%" 2>&1
 call :check %ERRORLEVEL% 0
 
 set "D=2 find /c counts matches"& set "RX=^1$"& set RXI=

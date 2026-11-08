@@ -1,4 +1,5 @@
 # windows-nano-wine-tools: Command-line tools Nano Server lacks (find, fc and more), from Wine 11.0 on Nano Server.
+# Docker Hub categories: developer-tools, operating-systems
 #
 # Licensing: the Wine programs are LGPL-2.1-or-later. The image carries their complete corresponding source, the
 # unmodified wine-11.0.tar.xz release tarball from WineHQ (pinned by SHA-256, with WineHQ's signature next to it), in

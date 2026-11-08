@@ -1,6 +1,7 @@
 """Every Dockerfile says what the image is and how to build it, and documents each build argument where it is declared.
 
-The format is in the dockerfile-docs skill (.claude/skills/dockerfile-docs/SKILL.md).
+The format is in the dockerfile-docs skill (.claude/skills/dockerfile-docs/SKILL.md, which OpenCode
+loads through opencode.json).
 """
 
 from __future__ import annotations

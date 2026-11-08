@@ -2,6 +2,12 @@
 
 Windows container images (nanoserver, with servercore where needed), built and tested on self-hosted Windows runners, published to Docker Hub as `zippy1981/<image>`. Read [DEVELOPER.md](DEVELOPER.md) before working on an image, and the [ADRs](docs/adr/README.md) before changing CI or conventions.
 
+## Other agent tools
+
+- [AGENTS.md](AGENTS.md) carries the same rules for Muse Code and OpenCode. When a rule changes, change both files in the same commit.
+- OpenCode support is [`opencode.json`](opencode.json) (the skill paths) plus `.opencode/agent/*.md`, thin subagents that point at the playbooks in `.claude/agents/`. Keep the wrappers' descriptions, mode and permissions in sync with the playbooks; `tests/test_opencode_config.py` enforces it.
+- `.claude/settings.json` configures Claude Code only. Under OpenCode, set `UV_PYTHON=3.14` and `UV_PYTHON_PREFERENCE=only-managed` in the shell before running `uv`.
+
 ## Environment (Windows host)
 
 - **Python:** always through uv (ADR 0010): `uv run pytest`, `uv run python scripts/<x>.py`. `.claude/settings.json` sets `UV_PYTHON=3.14` and `UV_PYTHON_PREFERENCE=only-managed`. Without them uv picks 3.15, which has no PyYAML wheel, and fails building it. If `uv` isn't on PATH, it's at `%LOCALAPPDATA%\Microsoft\WinGet\Packages\astral-sh.uv_*\uv.exe`. `python3` on this host is only the Microsoft Store stub.

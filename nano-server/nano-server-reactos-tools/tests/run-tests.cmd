@@ -15,7 +15,7 @@ rem ReactOS find only handled a relative file name in the prototype, so run from
 cd /d %FIX%
 
 set "D=1 find in a file"& set "RX=^one"& set RXI=
-find "one" a.txt > "%OUT%" 2>&1
+"%RT%\find.exe" "one" %FIX%\a.txt > "%OUT%" 2>&1
 call :check %ERRORLEVEL% 0
 
 set "D=2 find /c counts matches"& set "RX=^1$"& set RXI=

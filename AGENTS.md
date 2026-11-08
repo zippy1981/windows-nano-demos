@@ -9,8 +9,16 @@ This file is the Muse Code counterpart to [CLAUDE.md](CLAUDE.md), which serves t
 - **Rules:** Muse Code reads this file as project rules when it runs in this directory. It does not read `CLAUDE.md` or `.claude/settings.json`.
 - **Skills:** the project skills under `.claude/skills/` and `.agents/skills/` are discovered and load as Muse Code project skills as they are. Do not copy them into a second folder to make them work. `github-issues` exists in both folders with identical content; Muse Code uses the `.agents/skills/` copy.
 - **Agents:** `.claude/agents/*.md` are Claude Code subagent definitions. Muse Code does not load them as agent definitions. Treat each file as a role playbook: follow its procedure yourself, or hand it to a built-in subagent as part of its task. Model names in those files (haiku, sonnet, opus) do not map to Muse Code models; use the cheapest model that fits the role, as `.claude/agents/README.md` intends.
-- **Settings:** `.claude/settings.json` sets `UV_PYTHON=3.14` and `UV_PYTHON_PREFERENCE=only-managed` for Claude Code. Muse Code ignores that file, so set both variables in your shell environment before running `uv` on the Windows host.
-- **Hosts:** Muse Code also runs on non-Windows hosts, where Windows containers cannot be built or run. From such a host, implement in a worktree, push the branch, and let the self-hosted Windows CI runners do every build and smoke test. Accept no change on local evidence alone.
+- **Settings:** `.claude/settings.json` sets `UV_PYTHON=3.14` and `UV_PYTHON_PREFERENCE=only-managed` for Claude Code. Muse Code and OpenCode ignore that file, so set both variables in your shell environment before running `uv` on the Windows host.
+- **Hosts:** Muse Code and OpenCode also run on non-Windows hosts, where Windows containers cannot be built or run. From such a host, implement in a worktree, push the branch, and let the self-hosted Windows CI runners do every build and smoke test. Accept no change on local evidence alone.
+
+## OpenCode in this repo
+
+- **Rules:** OpenCode reads this file as project rules when it runs in this directory. `opencode.json` adds the repo's skill folders; nothing else is needed at startup.
+- **Skills:** `opencode.json` lists `.claude/skills` and `.agents/skills` in `skills.paths`, so OpenCode loads the Claude Code project skills and the vendored `github-issues` skill as they are. Do not copy a skill into `.opencode/skills`.
+- **Agents:** `.opencode/agent/<name>.md` mirrors every `.claude/agents/<name>.md` playbook. The wrapper keeps the playbook's description, runs as a subagent, and gives only the permissions its Claude `tools` need. The Claude playbook stays the source of truth for the procedure; edit it, then update the wrapper. `tests/test_opencode_config.py` enforces the mapping.
+- **Models:** OpenCode subagents inherit the session model. To keep the haiku/sonnet/opus cost split from [.claude/agents/README.md](.claude/agents/README.md), add `model: <provider>/<model-id>` to the wrapper. Bare Claude names (`haiku`, `sonnet`, `opus`) are not OpenCode model IDs.
+- **Restart:** OpenCode loads config, agents and skills once at startup. Restart it after changing any of them.
 
 ## Environment (Windows host)
 

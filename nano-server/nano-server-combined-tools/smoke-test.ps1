@@ -41,11 +41,8 @@ foreach ($file in 'COPYING', 'COPYING.LIB', 'WINE-COPYING.LIB', 'SOURCE.md', 'ro
 Write-Host 'ok: the licence files, SOURCE.md, the shim and the manifest are in the image'
 
 # Certificate support: certoc (Server Core) adds a certificate to the machine root store.
-# Each docker run is a fresh container, so the add and the registry check must happen in the
-# same run. ContainerUser cannot write HKLM, so run as ContainerAdministrator. The fixture
-# certificate's SHA-1 thumbprint is baked into the registry key name it creates.
-$thumbprint = '19E13843A8BF4B194E8E17F89DDBF7096E0D5BA7'
-$store = docker run --rm --user ContainerAdministrator $Image '\"C:\Program Files\combined-tools\certoc.exe\" -addstore root C:\tests\fixtures\test.cer && reg query HKLM\SOFTWARE\Microsoft\SystemCertificates\ROOT\Certificates' 2>&1 | Out-String
-if ($LASTEXITCODE) { throw "certoc -addstore root failed: $LASTEXITCODE`n$store" }
-if ($store -notmatch $thumbprint) { throw "the test certificate ($thumbprint) is not in the root store: $store" }
+# Each docker run is a fresh container, so C:\tests\cert-check.cmd does the add and the
+# registry check in the same run. ContainerUser cannot write HKLM, so run as administrator.
+$store = docker run --rm --user ContainerAdministrator $Image 'C:\tests\cert-check.cmd' 2>&1 | Out-String
+if ($LASTEXITCODE) { throw "certoc -addstore root check failed: $LASTEXITCODE`n$store" }
 Write-Host 'ok: certoc -addstore root added the test certificate to the machine root store'

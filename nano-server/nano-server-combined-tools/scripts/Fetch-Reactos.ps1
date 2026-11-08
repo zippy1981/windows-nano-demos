@@ -90,7 +90,7 @@ try {
     & (Join-Path $PSScriptRoot 'New-ShimDef.ps1') -ToolsDir $OutDir -OutFile $def
     $shimAsm = Join-Path $ContextDir 'shim\chkstk.S'
     $shimDll = Join-Path $OutDir 'rosk32sh.dll'
-    & $clang.FullName -shared -nostdlib -Wl,--entry,DllMain $shimAsm $def -o $shimDll
+    & $clang.FullName -shared -nostdlib '-Wl,--entry,DllMain' $shimAsm $def -o $shimDll
     if ($LASTEXITCODE -ne 0) { throw "clang could not build rosk32sh.dll ($LASTEXITCODE)" }
 
     & (Join-Path $PSScriptRoot 'Set-PeImportName.ps1') -Path $OutDir

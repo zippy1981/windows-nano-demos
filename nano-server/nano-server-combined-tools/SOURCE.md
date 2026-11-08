@@ -20,7 +20,8 @@
   version as the base image, under Microsoft's container image licence.
 
 Nightlies are purged from `iso.reactos.org`, and pushing this image distributes GPL
-binaries. Before this image is published, a maintainer must mirror the pinned ReactOS
-boot CD and source archive as GitHub release assets in this repository (release
-`reactos-bootcd-0.4.17-dev-1302`) and record the asset URLs here. Until then this image
-is build-and-test only; do not publish it. This is an engineering reading, not legal advice.
+binaries. The pinned ReactOS boot CD and source archive are mirrored as assets of release
+`reactos-0.4.17-dev-1340-gfaa2d03`, which the `release` job in
+`.github/workflows/reactos-tools-container.yml` creates on `main`. The asset URLs are listed in
+`nano-server/nano-server-reactos-tools/SOURCE.md`. Until that release exists this image is
+build-and-test only; do not publish it. This is an engineering reading, not legal advice.

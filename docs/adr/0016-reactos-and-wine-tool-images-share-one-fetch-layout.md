@@ -24,7 +24,8 @@ Two constraints shape the layout. A Dockerfile can only `COPY` files inside its 
 - Tools move from `C:\Program Files\<name>-tools` to `C:\tools\<name>`. Anything that hard-coded the old path must change. The tests and smoke scripts in this repository are updated; a user's own scripts that refer to the old path will need the same change.
 - The combined image's licence and `SOURCE.md` files are copies of the other two images' files. They are duplicated on purpose, because each image must ship its own licence texts.
 - Changes to `nano-server/shared-tools/` trigger all three tool image workflows.
-- The ReactOS release is not yet created. Until a maintainer creates it and records the asset URLs in each image's `SOURCE.md`, the ReactOS and combined images must stay build-and-test only, and must not be published.
+- The ReactOS release is created by the pipeline, not by hand. The `source` job in `reactos-tools-container.yml` downloads the source archive and boot CD, checks both SHA-256 pins, and uploads them as a build artifact. The `release` job runs only on `main`, after the image build passes, and publishes that artifact as release `reactos-0.4.17-dev-1340-gfaa2d03`. It skips the step if the release already exists. Until the first run on `main` has created the release, the ReactOS and combined images must stay build-and-test only, and must not be published.
+- The `release` job is the one job outside `image-refresh.yml` that writes to the repository. It holds `contents: write` for that job only; the workflow default is `contents: read`. This departs from the rule that only `image-refresh.yml` publishes, because a release is not a Docker Hub image.
 
 ## Alternatives considered
 

@@ -23,8 +23,11 @@ fetch and patching scripts are in this repository under `nano-server/shared-tool
 - SHA-256 of the archive: `b03a9e90a1b1d4ee12ea8076a9533bd742f350234fceed9d87bbe0e23389a90a`
 
 Nightlies are purged from `iso.reactos.org`, and pushing this image to Docker Hub
-distributes GPL binaries. Before this image is published, a maintainer must mirror the
-pinned boot CD `.7z` and the source archive above as GitHub release assets in this
-repository (release `reactos-0.4.17-dev-1340-gfaa2d03`) and record the asset URLs here.
-That release does not exist yet. Until it does this image is build-and-test only; do not
-publish it.
+distributes GPL binaries. The `release` job in `.github/workflows/reactos-tools-container.yml`
+mirrors the pinned boot CD and the source archive as assets of release
+`reactos-0.4.17-dev-1340-gfaa2d03` once that job's build passes on `main`. The assets are:
+
+- `https://github.com/zippy1981/windows-nano-demos/releases/download/reactos-0.4.17-dev-1340-gfaa2d03/reactos-0.4.17-dev-1340-gfaa2d03-src.tar.gz`
+- `https://github.com/zippy1981/windows-nano-demos/releases/download/reactos-0.4.17-dev-1340-gfaa2d03/reactos-bootcd-0.4.17-dev-1340-gfaa2d03-x64-msvc-win-dbg.7z`
+
+Do not publish this image until that release exists. Until then it is build-and-test only.

@@ -1,0 +1,51 @@
+# Updates every published image's Docker Hub short description, categories and overview from main, without
+# rebuilding or pushing images (issue #56). The publish step in build-windows-image.yml does the same for one image
+# whenever it is published; run this by hand to apply documentation changes to all repositories at once.
+name: Docker Hub docs
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Only this image, for example windows-nano-go. Empty updates every published image.
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    # API calls only, no docker, so a GitHub-hosted runner. The environment releases the secrets only to main.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: Docker Hub zippy1981
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Update the Docker Hub documentation
+        shell: pwsh
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          ONLY: ${{ inputs.image }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $failed = @()
+          foreach ($dockerfile in Get-ChildItem nano-server/*/Dockerfile, server-core/*/Dockerfile) {
+            $context = [IO.Path]::GetRelativePath($PWD, $dockerfile.DirectoryName) -replace '\\', '/'
+            $image = (Get-Content $dockerfile -TotalCount 1) -replace '^# ([\w.-]+):.*$', '$1'
+            if ($env:ONLY -and $image -ne $env:ONLY) { continue }
+            # Only repositories that exist: an image that was never published has no Docker Hub page yet
+            try { Invoke-RestMethod "https://hub.docker.com/v2/repositories/zippy1981/$image/" | Out-Null }
+            catch { "Skipping $image, not on Docker Hub" | Tee-Object -Append -FilePath $env:GITHUB_STEP_SUMMARY; continue }
+            try {
+              ./scripts/Publish-DockerHubDocs.ps1 -Context $context -Repository "zippy1981/$image" -Revision '${{ github.sha }}' |
+                Tee-Object -Append -FilePath $env:GITHUB_STEP_SUMMARY
+            }
+            catch {
+              $failed += $image
+              "::error title=Docker Hub docs::${image}: $_"
+            }
+          }
+          if ($failed) { throw "updating the documentation failed for: $($failed -join ', ')" }

@@ -85,6 +85,35 @@ class TestBuildArguments:
 
 DOCKER_HUB_SHORT_MAX = 100  # Docker Hub's limit for a repository's short description
 DOCS_SCRIPT = "scripts/Publish-DockerHubDocs.ps1"
+# Docker Hub's categories, from https://hub.docker.com/v2/categories on 2026-11-06. A repository may have up to three.
+DOCKER_HUB_CATEGORIES = {
+    "api-management",
+    "content-management-system",
+    "data-science",
+    "databases-and-storage",
+    "developer-tools",
+    "integration-and-delivery",
+    "internet-of-things",
+    "languages-and-frameworks",
+    "machine-learning-and-ai",
+    "message-queues",
+    "monitoring-and-observability",
+    "networking",
+    "operating-systems",
+    "security",
+    "web-analytics",
+    "web-servers",
+}
+DOCKER_HUB_CATEGORIES_MAX = 3
+CATEGORIES_LINE = re.compile(r"^# Docker Hub categories: (?P<slugs>.+)$")
+
+
+def categories(image_dir: Path) -> list[str] | None:
+    """The slugs on the header's `# Docker Hub categories:` line, or None if there is no such line."""
+    for line in header(raw_lines(image_dir)):
+        if match := CATEGORIES_LINE.match(line):
+            return [slug.strip() for slug in match.group("slugs").split(",")]
+    return None
 
 
 @pytest.mark.parametrize("image_dir", IMAGES, ids=image_context)
@@ -95,6 +124,24 @@ class TestDockerHubDocumentation:
             f"{image_context(image_dir)}/Dockerfile's description is {len(description)} characters; it becomes the "
             f"Docker Hub short description, which allows {DOCKER_HUB_SHORT_MAX}"
         )
+
+    def test_description_has_no_internal_references(self, image_dir: Path) -> None:
+        description = re.sub(r"^# [\w.-]+: ", "", raw_lines(image_dir)[0])
+        assert not re.search(r"#\d+|\bADR\b|\bissue\b", description, re.IGNORECASE), (
+            f"{image_context(image_dir)}/Dockerfile's description is shown on Docker Hub, where issue and ADR "
+            f"numbers mean nothing: {description!r}"
+        )
+
+    def test_declares_its_docker_hub_categories(self, image_dir: Path) -> None:
+        slugs = categories(image_dir)
+        assert slugs, (
+            f"{image_context(image_dir)}/Dockerfile's header needs '# Docker Hub categories: <slug>[, <slug>...]' "
+            "(dockerfile-docs skill)"
+        )
+        assert len(slugs) <= DOCKER_HUB_CATEGORIES_MAX, f"Docker Hub allows {DOCKER_HUB_CATEGORIES_MAX} categories"
+        assert len(set(slugs)) == len(slugs), f"duplicate categories: {slugs}"
+        unknown = sorted(set(slugs) - DOCKER_HUB_CATEGORIES)
+        assert not unknown, f"{image_context(image_dir)}: not Docker Hub category slugs: {unknown}"
 
     def test_has_a_readme_for_the_docker_hub_overview(self, image_dir: Path) -> None:
         readme = image_dir / "README.md"
@@ -116,6 +163,11 @@ def test_every_build_checks_the_docker_hub_documentation_without_credentials() -
     assert all("if" not in s and "DOCKERHUB_TOKEN" not in str(s.get("env", {})) for s in checks), (
         "the documentation check must run on every build, pull requests included, without Docker Hub credentials"
     )
+
+
+def test_the_docs_script_reads_the_categories_line() -> None:
+    script = (IMAGES[0].parent.parent / DOCS_SCRIPT).read_text(encoding="utf-8")
+    assert "# Docker Hub categories: " in script, f"{DOCS_SCRIPT} must read the header line these tests check"
 
 
 def test_publishing_updates_the_docker_hub_documentation() -> None:

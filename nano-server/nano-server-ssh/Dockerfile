@@ -1,4 +1,5 @@
 # windows-nano-ssh: Win32-OpenSSH server where clients log in as real local Windows users (password or key).
+# Docker Hub categories: networking, security
 #
 # For ltsc2025, build with BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc2025-amd64
 # (build.cmd and CI do). Nanoserver 2025 rejects every local-account logon:

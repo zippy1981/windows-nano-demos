@@ -1,0 +1,40 @@
+# Overrides for test-compose.ps1 (the Compose files workflow). Compose merges them over compose.yaml:
+# - the cache uses throwaway named volumes instead of host folders, which CI must not touch;
+# - runner1 runs a connectivity check instead of registering with GitHub;
+# - nothing restarts on its own.
+# The project name, subnet and cache address come from the environment test-compose.ps1 sets.
+services:
+  artifact-cache:
+    restart: "no"
+    volumes: !override
+      - type: volume
+        source: cache
+        target: C:\cache
+      - type: volume
+        source: caddy-data
+        target: C:\caddy-data
+
+  runner1:
+    restart: "no"
+    entrypoint:
+      - C:\Program Files\PowerShell\7\pwsh.exe
+      - -NoLogo
+      - -NoProfile
+      - -Command
+      # $$ is a literal $ to Compose. Checks the docker pipe, the cache by address and by name, and GitHub.
+      # Each health check is tried for up to 30 seconds: right after the cache restarts, Windows' container DNS
+      # doesn't resolve its alias for a few seconds (curl exit 6), and test-compose.ps1 restarts it just before this.
+      - >-
+        $$ErrorActionPreference = 'Stop';
+        docker version --format 'docker pipe: {{.Server.Version}}';
+        if ($$LASTEXITCODE) { exit 10 };
+        foreach ($$url in "http://$${env:ARTIFACT_CACHE_IP}:8080/healthz", 'http://artifact-cache:8080/healthz') {
+        $$body = $$null;
+        foreach ($$try in 1..15) { $$body = curl.exe -fsS -m 10 $$url; if ($$body -eq 'ok') { break }; Start-Sleep 2 };
+        if ($$body -ne 'ok') { "no health from $$url"; exit 11 }; "$$url ok after $$try tries" };
+        curl.exe -fsS -m 10 -o NUL https://api.github.com; if ($$LASTEXITCODE) { exit 12 };
+        'github reachable'; 'runner check passed'
+
+volumes:
+  cache: {}
+  caddy-data: {}

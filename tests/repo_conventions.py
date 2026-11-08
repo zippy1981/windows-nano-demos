@@ -24,7 +24,10 @@ DEFAULT_WINDOWS_VERSION = "2025"
 # ADR 0008 exceptions: images whose workflow overrides the shared matrix with `windows-versions`, and exactly the
 # versions they build. Every entry needs a reason in the image README.
 # None today: MySQL builds ltsc2019 again since its smoke test waits for the server properly (issue #44).
-WINDOWS_VERSION_EXCEPTIONS: dict[str, list[str]] = {}
+WINDOWS_VERSION_EXCEPTIONS: dict[str, list[str]] = {
+    # ADR 0014: the artifact cache only runs on the ltsc2025 runner host
+    "nano-server/nano-server-artifact-cache": ["2025"],
+}
 BASE_IMAGE_ARG = re.compile(
     r"^ARG BASE_IMAGE=mcr\.microsoft\.com/windows/(nanoserver|servercore):ltsc\$\{WINDOWS_VERSION\}-amd64$"
 )
@@ -36,6 +39,11 @@ REFRESH_WORKFLOW = "image-refresh.yml"
 # The GitHub environment that holds DOCKERHUB_USERNAME and DOCKERHUB_TOKEN
 PUBLISH_ENVIRONMENT = "Docker Hub zippy1981"
 SMOKE_TEST = "smoke-test.ps1"
+# ADR 0015: the runner fleet's Compose files, and the test that starts them. Its workflow is the only one besides
+# the reusable workflow that may run docker directly.
+FLEET_DIR = REPO_ROOT / "ci" / "runner-fleet"
+COMPOSE_TEST = "test-compose.ps1"
+DIRECT_DOCKER_WORKFLOWS = {"compose.yml"}
 # ADR 0012: each image lives in the directory for the base of its final stage, as <dir>/<dir>-<name>, and is
 # published as the matching Docker Hub name, windows-<prefix>-<name>
 IMAGE_PARENTS = {"nano-server": "nanoserver", "server-core": "servercore"}
@@ -83,10 +91,10 @@ def is_reusable_call(job: dict[str, Any]) -> bool:
 
 
 def runs_docker(job: dict[str, Any]) -> bool:
-    """True if any step runs the docker CLI, directly or through an image's smoke-test.ps1."""
+    """True if any step runs the docker CLI, directly or through an image's smoke-test.ps1 or the Compose test."""
     for step in job.get("steps", []):
         script = step.get("run", "")
-        if _DOCKER_COMMAND.search(script) or SMOKE_TEST in script:
+        if _DOCKER_COMMAND.search(script) or SMOKE_TEST in script or COMPOSE_TEST in script:
             return True
     return False
 

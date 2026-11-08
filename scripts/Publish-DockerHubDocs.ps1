@@ -1,11 +1,16 @@
 <#
 .SYNOPSIS
-Sets a Docker Hub repository's short description and overview from the image's Dockerfile header and README.md.
+Sets a Docker Hub repository's short description, categories and overview from the image's Dockerfile header and README.md.
 .DESCRIPTION
 The short description is the Dockerfile's first line after "# <image>: " (the dockerfile-docs skill). Docker Hub
-allows 100 characters. The overview is the image folder's README.md, with relative links and images rewritten to
+allows 100 characters. The categories are the slugs on the header's "# Docker Hub categories:" line, at most three.
+The overview is the image folder's README.md, with relative links and images rewritten to
 GitHub URLs at -Revision (Docker Hub can't resolve relative paths), plus a footer that links the source, the
 Dockerfile and the tag scheme.
+
+Docker Hub's API documents categories as read-only; its docs set them in the web UI. The script asks the repository
+PATCH endpoint to set them, then reads them back. If they don't match, it prints a GitHub warning with the categories
+to pick under My Hub > Repositories > <repository> > the pencil icon, and the publish still succeeds.
 
 With -WhatIf it only builds and checks both texts, needs no credentials, and prints a summary. CI does that on every
 pull request, so broken documentation fails before anything is published. Without -WhatIf it signs in to the Docker
@@ -46,6 +51,18 @@ $short = $Matches.description.Trim()
 if ($short.Length -gt $MaxShort) {
     throw "$Context/Dockerfile's description is $($short.Length) characters; Docker Hub allows $MaxShort"
 }
+$MaxCategories = 3
+$headerLines = foreach ($line in Get-Content -Path (Join-Path $folder 'Dockerfile')) {
+    if ($line -notlike '#*') { break }
+    $line
+}
+$categoryLine = $headerLines | Where-Object { $_ -match '^# Docker Hub categories: (?<slugs>.+)$' } | Select-Object -First 1
+if (-not $categoryLine) { throw "$Context/Dockerfile's header needs '# Docker Hub categories: <slug>[, <slug>...]' (dockerfile-docs skill)" }
+$categories = @(($categoryLine -replace '^# Docker Hub categories: ', '') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$badSlugs = @($categories | Where-Object { $_ -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$' })
+if ($badSlugs -or -not $categories -or $categories.Count -gt $MaxCategories) {
+    throw "$Context/Dockerfile's Docker Hub categories must be 1 to $MaxCategories slugs, got: $($categories -join ', ')"
+}
 
 $readmePath = Join-Path $folder 'README.md'
 if (-not (Test-Path $readmePath)) { throw "$Context/README.md is missing; it becomes the Docker Hub overview" }
@@ -80,8 +97,9 @@ if ($overview.Length -gt $MaxFull) {
 
 if ($PreviewPath) { Set-Content -Path $PreviewPath -Value $overview -Encoding utf8 -WhatIf:$false }
 
-if (-not $PSCmdlet.ShouldProcess($Repository, 'Update the Docker Hub short description and overview')) {
+if (-not $PSCmdlet.ShouldProcess($Repository, 'Update the Docker Hub short description, categories and overview')) {
     Write-Output "${Repository}: short description ($($short.Length)/$MaxShort): $short"
+    Write-Output "${Repository}: categories ($($categories.Count)/$MaxCategories): $($categories -join ', ')"
     Write-Output "${Repository}: overview $($overview.Length)/$MaxFull characters, $rewritten relative links rewritten"
     return
 }
@@ -106,3 +124,26 @@ catch {
     throw "updating the description of $Repository failed: HTTP $status$hint"
 }
 Write-Output "${Repository}: updated the short description and the overview ($($overview.Length) characters)"
+
+# Categories: not a documented write, so try it, read back what Docker Hub kept, and warn instead of failing.
+$problem = $null
+try {
+    $known = Invoke-RestMethod @retry -Uri 'https://hub.docker.com/v2/categories'
+    $unknown = @($categories | Where-Object { $_ -notin $known.slug })
+    if ($unknown) { throw "not Docker Hub categories: $($unknown -join ', ')" }
+    $wanted = @($known | Where-Object { $_.slug -in $categories } | ForEach-Object { @{ name = $_.name; slug = $_.slug } })
+    Invoke-RestMethod @retry -Method Patch -Uri "https://hub.docker.com/v2/repositories/$Repository/" `
+        -Headers @{ Authorization = "Bearer $jwt" } -ContentType 'application/json' `
+        -Body (@{ categories = $wanted } | ConvertTo-Json -Depth 4) | Out-Null
+}
+catch {
+    $problem = if ($_.Exception.Response) { "HTTP $($_.Exception.Response.StatusCode)" } else { $_.Exception.Message }
+}
+$current = @((Invoke-RestMethod @retry -Uri "https://hub.docker.com/v2/repositories/$Repository/").categories.slug | Where-Object { $_ })
+if (Compare-Object @($categories | Sort-Object) @($current | Sort-Object)) {
+    $why = if ($problem) { " ($problem)" } else { '' }
+    Write-Output "::warning title=Docker Hub categories::$Repository has categories [$($current -join ', ')], wanted [$($categories -join ', ')]$why. Set them in Docker Hub: My Hub > Repositories > $Repository > the pencil icon under the description."
+}
+else {
+    Write-Output "${Repository}: categories are $($categories -join ', ')"
+}

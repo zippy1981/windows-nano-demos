@@ -13,6 +13,7 @@ The file starts with a comment block, before the first `ARG`:
 
 ```dockerfile
 # windows-nano-go: Go, MinGit and the micro editor on Nano Server. CI builds the three newest Go releases.
+# Docker Hub categories: languages-and-frameworks, developer-tools
 #
 # (optional) Anything a builder must know first, such as a base-image exception for one Windows version.
 #
@@ -21,7 +22,18 @@ The file starts with a comment block, before the first `ARG`:
 # Each build argument is described where it is declared below.
 ```
 
-- **First line:** `# <published image name>: <what the image is>`. Write one sentence that a person choosing an image would understand. It should say what's installed, not how it's built.
+- **First line:** `# <published image name>: <what the image is>`. Write one sentence that a person choosing an image would understand. It should say what's installed, not how it's built. Leave out issue and ADR numbers, which mean nothing on Docker Hub.
+- **Categories line:** `# Docker Hub categories: <slug>[, <slug>...]`, with one to three slugs from <https://hub.docker.com/v2/categories>. Pick what someone browsing Docker Hub would look under:
+
+  | The image is mainly | Categories |
+  | --- | --- |
+  | a language toolchain (Go, Rust, PHP, PowerShell) | `languages-and-frameworks, developer-tools` |
+  | interactive tools, such as editors and file managers | `developer-tools` |
+  | CI infrastructure, such as runners and the artifact cache | `integration-and-delivery`, plus `developer-tools`, `networking` or `web-servers` as fits |
+  | a database server | `databases-and-storage` |
+  | a network service, such as SSH | `networking`, plus `security` if access control is the point |
+
+  Don't use `operating-systems`. These images run *on* Windows, but they aren't base OS images.
 - **Build example:** include a `docker build` line with at least one `--build-arg`, and `--memory 4g` (Hyper-V's 1 GB default hangs builds).
 - **No `key=value` on the first line.** Docker would read `# key=value` there as a parser directive.
 
@@ -48,10 +60,16 @@ ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
 
 ## On Docker Hub
 
-The documentation is published with the image. `scripts/Publish-DockerHubDocs.ps1` turns the header's description into the Docker Hub short description, which allows at most 100 characters. It turns the image's `README.md` into the overview, with relative links rewritten to GitHub URLs. The shared workflow:
+The documentation is published with the image. `scripts/Publish-DockerHubDocs.ps1` turns the header's description into the Docker Hub short description, which allows at most 100 characters. It turns the image's `README.md` into the overview, with relative links rewritten to GitHub URLs. It also sets the header's categories.
+
+Docker Hub's API documents categories only as readable, so the script sends them and then reads them back. If they didn't stick, it prints a `Docker Hub categories` warning and the publish still succeeds. Then set them by hand: My Hub → Repositories → the repository → the pencil icon under the description.
+
+The shared workflow:
 
 - runs the script with `-WhatIf` on every build, pull requests included, so a description that is too long or a missing README fails early
 - runs it for real after a push to `main`
 - sets the `org.opencontainers.image.description` and `documentation` labels on the image
+
+The `Docker Hub docs` workflow (`dockerhub-docs.yml`, run by hand from `main`) updates every published repository's documentation without rebuilding any image.
 
 To preview an overview locally, run `./scripts/Publish-DockerHubDocs.ps1 -Context <folder> -Repository zippy1981/<image> -WhatIf -PreviewPath overview.md`.

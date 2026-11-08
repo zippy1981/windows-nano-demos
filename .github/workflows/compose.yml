@@ -1,0 +1,48 @@
+# Tests the runner fleet's Compose files (ADR 0015, plans/runner-fleet-compose.md): validates them, then starts the
+# artifact cache and a runner connectivity check under a throwaway project on its own subnet, and removes it all.
+# The one workflow besides build-windows-image.yml that runs docker directly (DIRECT_DOCKER_WORKFLOWS in tests).
+name: Compose files
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ci/runner-fleet/**'
+      - 'nano-server/nano-server-artifact-cache/**'
+      - '.github/workflows/compose.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ci/runner-fleet/**'
+      - 'nano-server/nano-server-artifact-cache/**'
+      - '.github/workflows/compose.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time across the whole repo: the test network uses a fixed subnet.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    # Self-hosted runners have host docker access, so never run code from forks on them (ADR 0003)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, windows, docker]
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install docker compose
+        run: |
+          $compose = ./ci/runner-fleet/Install-Compose.ps1 -Destination (Join-Path $env:RUNNER_TEMP 'docker-compose')
+          & $compose version
+          "COMPOSE_EXE=$compose" >> $env:GITHUB_ENV
+
+      - name: Test the Compose files
+        run: ./ci/runner-fleet/test-compose.ps1 -ComposeExe $env:COMPOSE_EXE -Project 'ci-compose-${{ github.run_id }}'

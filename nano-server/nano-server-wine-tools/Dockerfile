@@ -3,10 +3,11 @@
 #
 # Licensing: the Wine programs are LGPL-2.1-or-later. The image carries their complete corresponding source, the
 # unmodified wine-11.0.tar.xz release tarball from WineHQ (pinned by SHA-256, with WineHQ's signature next to it), in
-# C:\Program Files\wine-tools\source, next to COPYING.LIB, LICENSE, AUTHORS and SOURCE.md. See SOURCE.md.
+# C:\tools\wine\source, next to COPYING.LIB, LICENSE, AUTHORS and SOURCE.md. See SOURCE.md.
 #
-# Build from this folder (build.cmd does the same, and also tags zippy1981/windows-nano-wine-tools):
-#   docker build --memory 4g --build-arg WINDOWS_VERSION=2022 -t windows-nano-wine-tools:2022 .
+# Build from this folder (build.cmd does the same, and also tags zippy1981/windows-nano-wine-tools). The build context
+# is nano-server\, because fetch-wine.ps1 and Test-PeImports.ps1 are shared with the other tool images:
+#   docker build --memory 4g --build-arg WINDOWS_VERSION=2022 -f Dockerfile -t windows-nano-wine-tools:2022 ..
 # Each build argument is described where it is declared below.
 
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
@@ -22,9 +23,10 @@ ARG FETCH_IMAGE=mcr.microsoft.com/windows/servercore:ltsc2025-amd64
 # ---------- fetch: the Wine programs from WineHQ's .deb, and the matching source tarball ----------
 FROM ${FETCH_IMAGE} AS fetch
 SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
-COPY fetch-wine.ps1 tools.txt C:/fetch/
+COPY shared-tools/scripts/fetch-wine.ps1 C:/fetch/
+COPY nano-server-wine-tools/tools.txt C:/fetch/
 # The unmodified x86_64 PE programs listed in tools.txt, from the pinned wine-stable .deb (SHA-256 checked)
-RUN C:\fetch\fetch-wine.ps1 -OutDir C:\wine-pe
+RUN C:\fetch\fetch-wine.ps1 -ToolsFile C:\fetch\tools.txt -OutDir C:\wine-pe
 # The corresponding source for those programs: WineHQ's release tarball and its detached signature.
 # Docker passes RUN to powershell -Command with double quotes stripped, so strings use single quotes.
 ENV WINE_SOURCE_SHA256=C07A6857933C1FC60DFF5448D79F39C92481C1E9DB5AA628DB9D0358446E0701
@@ -45,7 +47,7 @@ RUN mkdir C:\Users\ContainerUser\pwsh && \
     tar -xf C:\Users\ContainerUser\pwsh.zip -C C:\Users\ContainerUser\pwsh && \
     del C:\Users\ContainerUser\pwsh.zip
 COPY --from=fetch ["C:/wine-pe/", "C:/wine-pe/"]
-COPY scripts/ C:/scripts/
+COPY shared-tools/scripts/Test-PeImports.ps1 C:/scripts/
 RUN C:\Users\ContainerUser\pwsh\pwsh.exe -NoLogo -NoProfile -File C:\scripts\Test-PeImports.ps1 -Path C:\wine-pe -System32 C:\Windows\System32
 
 # ---------- final ----------
@@ -60,12 +62,12 @@ LABEL org.opencontainers.image.licenses="LGPL-2.1-or-later" \
 ENV WINEDEBUG=-all
 
 # Copying from the check stage makes the final stage depend on it, so the import check always runs.
-COPY --from=check ["C:/wine-pe/", "C:/Program Files/wine-tools/"]
-COPY ["licenses/", "C:/Program Files/wine-tools/"]
-COPY ["SOURCE.md", "C:/Program Files/wine-tools/"]
-COPY --from=fetch ["C:/wine-source/", "C:/Program Files/wine-tools/source/"]
-COPY tests/ C:/tests/
-COPY tools.txt C:/tests/tools.txt
+COPY --from=check ["C:/wine-pe/", "C:/tools/wine/"]
+COPY ["nano-server-wine-tools/licenses/", "C:/tools/wine/"]
+COPY ["nano-server-wine-tools/SOURCE.md", "C:/tools/wine/"]
+COPY --from=fetch ["C:/wine-source/", "C:/tools/wine/source/"]
+COPY nano-server-wine-tools/tests/ C:/tests/
+COPY nano-server-wine-tools/tools.txt C:/tests/tools.txt
 
 # C:\work is scratch space for the tests (cabinets, hard links), writable by the default user.
 USER ContainerAdministrator
@@ -76,7 +78,7 @@ USER ContainerUser
 # The Wine tools go after the system PATH (the user PATH is appended to it), so nothing nanoserver
 # ships is shadowed. On ltsc2019 the user's Environment key has to exist before setx can add to it.
 RUN reg query HKCU\Environment 2> NUL || reg add HKCU\Environment /v PATH
-RUN setx PATH "C:\Program Files\wine-tools"
+RUN setx PATH "C:\tools\wine"
 
 # The container has two users, ContainerAdministrator and ContainerUser.
 # They don't show up in the Net User command, but they have profile directories with registry hives.

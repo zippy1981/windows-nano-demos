@@ -4,17 +4,18 @@
 
 .DESCRIPTION
     Runs in the Dockerfile's Server Core fetch stage with Windows PowerShell. Downloads
-    7-Zip (pinned by SHA-256) and the pinned ReactOS x64 MSVC nightly boot CD (pinned by
-    SHA-256), extracts only the files listed in -ToolsFile from reactos\system32, builds
+    7-Zip (pinned by SHA-256) and the pinned ReactOS x64 MSVC nightly boot CD for -ReactosVersion
+    (pinned by SHA-256), extracts only the files listed in -ToolsFile from reactos\system32, builds
     rosk32sh.dll with llvm-mingw (pinned by SHA-256) from shim\chkstk.S and the generated
     forwarder definition, and rewrites each tool's kernel32.dll import to rosk32sh.dll
     with Set-PeImportName.ps1. The patched tools and the shim land in -OutDir.
 
 .EXAMPLE
-    powershell -NoProfile -File Fetch-Reactos.ps1 -ToolsFile C:\fetch\tools.txt -OutDir C:\ros-out -ContextDir C:\fetch
+    powershell -NoProfile -File Fetch-Reactos.ps1 -ReactosVersion 4.17 -ToolsFile C:\fetch\tools.txt -OutDir C:\ros-out -ContextDir C:\fetch
 #>
 [CmdletBinding()]
 param(
+    [string] $ReactosVersion = '4.17',
     [Parameter(Mandatory)] [string] $ToolsFile,
     [Parameter(Mandatory)] [string] $OutDir,
     [Parameter(Mandatory)] [string] $ContextDir
@@ -23,9 +24,20 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$rosFile = 'reactos-bootcd-0.4.17-dev-1302-ge25c373-x64-msvc-win-dbg.7z'
+# The ReactOS x64 MSVC nightly boot CD pinned for each release line. Add a line when the release changes.
+$rosBuilds = @{
+    '4.17' = @{
+        Build = '0.4.17-dev-1340-gfaa2d03'
+        Sha256 = '37f8642188a949a109000c96522407ce7b515658b804569f717ac95e7051193b'
+        Commit = 'faa2d0325a880c8ef56bad1e52e7288176ef9975'
+    }
+}
+if (-not $rosBuilds.ContainsKey($ReactosVersion)) { throw "no pinned ReactOS nightly for version $ReactosVersion" }
+$rosBuild = $rosBuilds[$ReactosVersion]
+Write-Host "ReactOS $ReactosVersion: nightly $($rosBuild.Build), source commit $($rosBuild.Commit)"
+$rosFile = "reactos-bootcd-$($rosBuild.Build)-x64-msvc-win-dbg.7z"
 $rosUrl = "https://iso.reactos.org/bootcd/$rosFile"
-$rosSha256 = 'afa7b62a626c440874ff04d51eba5c5b2ab357e79a7bd467be47d6f8f4d0d59a'
+$rosSha256 = $rosBuild.Sha256
 $sevenZrUrl = 'https://www.7-zip.org/a/7zr.exe'
 $sevenZrSha256 = '256feca8e274e5da655e2a284fabafd9f554365eb164862089dacd4e8276d282'
 $sevenZipUrl = 'https://github.com/ip7z/7zip/releases/download/26.05/7z2605-x64.exe'

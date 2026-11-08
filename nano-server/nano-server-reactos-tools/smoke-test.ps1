@@ -34,7 +34,7 @@ $tap | Write-Host
 if ($code) { throw "run-tests.cmd reported $code failing test(s)" }
 Write-Host 'ok: every baked-in test passed'
 
-$listing = docker run --rm --entrypoint cmd $Image /c dir /b 'C:\Program Files\reactos-tools' 2>&1 | Out-String
+$listing = docker run --rm --entrypoint cmd $Image /c dir /b 'C:\tools\reactos' 2>&1 | Out-String
 foreach ($file in 'COPYING', 'COPYING.LIB', 'SOURCE.md', 'rosk32sh.dll') {
     if ($listing -notmatch "(?m)^$([regex]::Escape($file))\s*$") { throw "the image is missing $file" }
 }

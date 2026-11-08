@@ -6,7 +6,7 @@ rem Usage: C:\tests\run-tests.cmd
 setlocal
 set FIX=C:\tests\fixtures
 set WORK=C:\work
-set "WT=C:\Program Files\wine-tools"
+set "WT=C:\tools\wine"
 set OUT=%WORK%\test-out.txt
 set T=0
 set FAILS=0

@@ -1,0 +1,6 @@
+# The build context for the tool images is nano-server\, so only the folders they copy are sent.
+*
+!shared-tools/**
+!nano-server-wine-tools/**
+!nano-server-reactos-tools/**
+!nano-server-combined-tools/**

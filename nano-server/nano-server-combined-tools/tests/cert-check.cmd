@@ -5,7 +5,7 @@ rem (smoke-test.ps1 does), because ContainerUser cannot write HKLM. Quoting a pa
 rem spaces works inside a .cmd file, unlike a docker-run command string through cmd /S /C.
 rem Usage: C:\tests\cert-check.cmd
 setlocal
-"C:\Program Files\combined-tools\certoc.exe" -addstore root C:\tests\fixtures\test.cer
+"C:\tools\combined\certoc.exe" -addstore root C:\tests\fixtures\test.cer
 if errorlevel 1 exit /b %ERRORLEVEL%
 reg query HKLM\SOFTWARE\Microsoft\SystemCertificates\ROOT\Certificates\19E13843A8BF4B194E8E17F89DDBF7096E0D5BA7
 exit /b %ERRORLEVEL%

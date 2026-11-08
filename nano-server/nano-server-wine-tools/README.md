@@ -11,11 +11,11 @@ build.cmd
 set WINDOWS_VERSION=2022 && build.cmd
 ```
 
-`WINDOWS_VERSION` is `2019`, `2022` or `2025` (the default). The Wine programs are not in git. The Dockerfile's download stage runs `fetch-wine.ps1` on Server Core ltsc2025 for every Windows version, because only ltsc2025's `tar.exe` reads the zstd data in the `.deb`. The script downloads the pinned `.deb`, checks its SHA-256 and extracts only the files listed in `tools.txt`.
+`WINDOWS_VERSION` is `2019`, `2022` or `2025` (the default). The Wine programs are not in git. The Dockerfile's download stage runs `nano-server/shared-tools/scripts/fetch-wine.ps1` on Server Core ltsc2025 for every Windows version, because only ltsc2025's `tar.exe` reads the zstd data in the `.deb`. The script downloads the pinned `.deb`, checks its SHA-256 and extracts only the files listed in `tools.txt`.
 
 ## Licensing and source
 
-The Wine programs are LGPL-2.1-or-later. The image carries the licence files (`COPYING.LIB`, `LICENSE`, `AUTHORS`) and, in `C:\Program Files\wine-tools\source`, the unmodified `wine-11.0.tar.xz` release tarball with WineHQ's signature. That's the complete corresponding source, shipped with every published image. [`SOURCE.md`](SOURCE.md) has its SHA-256 and how to copy it out. The smoke test fails if any of these files is missing.
+The Wine programs are LGPL-2.1-or-later. The image carries the licence files (`COPYING.LIB`, `LICENSE`, `AUTHORS`) and, in `C:\tools\wine\source`, the unmodified `wine-11.0.tar.xz` release tarball with WineHQ's signature. That's the complete corresponding source, shipped with every published image. [`SOURCE.md`](SOURCE.md) has its SHA-256 and how to copy it out. The smoke test fails if any of these files is missing.
 
 In CI the image builds through the shared workflow like the others. The `extract-wine` and `build-from-source` jobs on `ubuntu-latest` only compare WineHQ's binaries with a build from the source tarball, for information.
 
@@ -27,19 +27,19 @@ Only modules that pass all three checks are copied:
 
 1. Not a Wine core module (`ntdll`, `kernel32`, `kernelbase`, `user32`, `gdi32`, `advapi32`, `ws2_32`, `msvcrt`, `ucrtbase` and others). Both extract scripts refuse these names.
 2. No unixlib. If `lib/wine/x86_64-unix/<name>.so` exists, the PE half needs the Unix side, and the extract scripts refuse it.
-3. Every import resolves against the base image. The Dockerfile's `check` stage runs `scripts/Test-PeImports.ps1` inside the exact nanoserver base, and the build fails on any missing DLL, function name or ordinal.
+3. Every import resolves against the base image. The Dockerfile's `check` stage runs `shared-tools/scripts/Test-PeImports.ps1` inside the exact nanoserver base, and the build fails on any missing DLL, function name or ordinal.
 
 Phase 1 ships only `.exe` programs, and no Wine DLLs at all.
 
 ## Use
 
-The tools are in `C:\Program Files\wine-tools`, which is appended to the user `PATH` after the system `PATH`, so nothing that nanoserver ships is shadowed. `WINEDEBUG=-all` is set in the image. Without it, Wine's stub code paths print `fixme:` lines to stderr.
+The tools are in `C:\tools\wine`, which is appended to the user `PATH` after the system `PATH`, so nothing that nanoserver ships is shadowed. `WINEDEBUG=-all` is set in the image. Without it, Wine's stub code paths print `fixme:` lines to stderr.
 
 ```cmd
 docker run --rm windows-nano-wine-tools:2025 "whoami & where cmd & tasklist"
 ```
 
-`start` is also a `cmd` built-in, and the built-in wins. Even `start.exe` does not help, because `cmd` parses it as the built-in `start` followed by `.exe`. Call Wine's program by its full path, `"C:\Program Files\wine-tools\start.exe"`, or from a program that is not `cmd`.
+`start` is also a `cmd` built-in, and the built-in wins. Even `start.exe` does not help, because `cmd` parses it as the built-in `start` followed by `.exe`. Call Wine's program by its full path, `"C:\tools\wine\start.exe"`, or from a program that is not `cmd`.
 
 Wine's `whoami` ends its output with a bare LF, so `findstr`'s `$` anchor (which needs a CR) does not match it.
 

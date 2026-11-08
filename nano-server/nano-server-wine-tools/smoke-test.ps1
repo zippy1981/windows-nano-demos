@@ -32,7 +32,7 @@ if ($code) { throw "run-tests.cmd reported $code failing test(s)" }
 Write-Host 'ok: every baked-in test passed'
 
 # Each path is its own argument to cmd: quotes inside one string don't survive docker and the cmd /S /C entrypoint
-$listing = docker run --rm --entrypoint cmd $Image /c dir /b 'C:\Program Files\wine-tools' 'C:\Program Files\wine-tools\source' 2>&1 |
+$listing = docker run --rm --entrypoint cmd $Image /c dir /b 'C:\tools\wine' 'C:\tools\wine\source' 2>&1 |
     Out-String
 foreach ($file in 'COPYING.LIB', 'LICENSE', 'AUTHORS', 'SOURCE.md', 'wine-11.0.tar.xz', 'wine-11.0.tar.xz.sign') {
     if ($listing -notmatch "(?m)^$([regex]::Escape($file))\s*$") { throw "the image is missing $file, which the LGPL requires with the binaries" }

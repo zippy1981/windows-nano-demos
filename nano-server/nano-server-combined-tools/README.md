@@ -47,7 +47,7 @@ Wine programs are LGPL-2.1-or-later, ReactOS programs GPL-2.0-or-later (some LGP
 
 ## Use
 
-The tools are in `C:\Program Files\combined-tools`, appended to the user `PATH` after the system `PATH`, so nothing nanoserver ships is shadowed. `WINEDEBUG=-all` is set, as in the Wine image.
+The tools are in `C:\tools\combined`, appended to the user `PATH` after the system `PATH`, so nothing nanoserver ships is shadowed. `WINEDEBUG=-all` is set, as in the Wine image.
 
 ```cmd
 docker run --rm windows-nano-combined-tools:2025 "whoami & where cmd & tree /f C:\tests\fixtures"

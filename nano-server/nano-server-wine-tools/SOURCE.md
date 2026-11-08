@@ -1,6 +1,6 @@
 # Source for the Wine programs in this image
 
-The programs in `C:\Program Files\wine-tools` are from Wine and are licensed under the GNU Lesser General Public License, version 2.1 or later. See `COPYING.LIB`, `LICENSE` and `AUTHORS` in the same folder.
+The programs in `C:\tools\wine` are from Wine and are licensed under the GNU Lesser General Public License, version 2.1 or later. See `COPYING.LIB`, `LICENSE` and `AUTHORS` in the same folder.
 
 ## Binaries
 
@@ -22,16 +22,16 @@ They are the unmodified x86_64 PE files from WineHQ's Ubuntu 24.04 (noble) packa
 
 Each program's source is in `programs/<name>/` of that tarball.
 
-**The image carries this tarball.** `C:\Program Files\wine-tools\source\wine-11.0.tar.xz` is the unmodified release tarball, with WineHQ's detached signature `wine-11.0.tar.xz.sign` next to it. The Dockerfile downloads both and checks the tarball's SHA-256 above before it copies them in, so every published image, including those on Docker Hub, comes with its complete corresponding source. To check the signature, use WineHQ's key: `gpg --verify wine-11.0.tar.xz.sign wine-11.0.tar.xz`.
+**The image carries this tarball.** `C:\tools\wine\source\wine-11.0.tar.xz` is the unmodified release tarball, with WineHQ's detached signature `wine-11.0.tar.xz.sign` next to it. The Dockerfile downloads both and checks the tarball's SHA-256 above before it copies them in, so every published image, including those on Docker Hub, comes with its complete corresponding source. To check the signature, use WineHQ's key: `gpg --verify wine-11.0.tar.xz.sign wine-11.0.tar.xz`.
 
 To copy it out of an image:
 
 ```cmd
 docker create --name wine-src zippy1981/windows-nano-wine-tools:2025
-docker cp "wine-src:C:\Program Files\wine-tools\source" .
+docker cp "wine-src:C:\tools\wine\source" .
 docker rm wine-src
 ```
 
 ## How the files were extracted
 
-The scripts that pick the files are in <https://github.com/zippy1981/windows-nano-demos> under `nano-server/nano-server-wine-tools/`. `fetch-wine.ps1` runs in the Dockerfile's Server Core ltsc2025 download stage, and `tools.txt` lists the programs. `extract-wine.sh` does the same on Linux for the from-source comparison job. There are no patches.
+The scripts that pick the files are in <https://github.com/zippy1981/windows-nano-demos> under `nano-server/shared-tools/scripts/` (`fetch-wine.ps1`) and `nano-server/nano-server-wine-tools/` (`extract-wine.sh`). `fetch-wine.ps1` runs in the Dockerfile's Server Core ltsc2025 download stage, and `tools.txt` lists the programs. `extract-wine.sh` does the same on Linux for the from-source comparison job. There are no patches.

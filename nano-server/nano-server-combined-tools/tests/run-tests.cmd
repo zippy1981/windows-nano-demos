@@ -5,7 +5,7 @@ rem hide its own failure. Usage: C:\tests\run-tests.cmd
 setlocal
 set FIX=C:\tests\fixtures
 set WORK=C:\work
-set "CT=C:\Program Files\combined-tools"
+set "CT=C:\tools\combined"
 set OUT=%WORK%\test-out.txt
 set T=0
 set FAILS=0

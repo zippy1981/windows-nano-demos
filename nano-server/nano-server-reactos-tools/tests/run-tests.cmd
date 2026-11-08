@@ -6,7 +6,7 @@ rem Usage: C:\tests\run-tests.cmd
 setlocal
 set FIX=C:\tests\fixtures
 set WORK=C:\work
-set "RT=C:\Program Files\reactos-tools"
+set "RT=C:\tools\reactos"
 set OUT=%WORK%\test-out.txt
 set T=0
 set FAILS=0

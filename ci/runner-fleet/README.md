@@ -42,7 +42,23 @@ A runner on a personal account serves exactly one repository, so the fleet's fiv
 - The runners join the fleet's `windows-nano-ci` network and get the same `ARTIFACT_CACHE_IP` and `ARTIFACT_CACHE_NETWORK`. The fleet must be running first; the script checks for the network.
 - They don't wait for the cache's health, because the cache belongs to another project. `restart: unless-stopped` brings them back after a reboot either way.
 - `-Count` (1–5, default 2), `-NamePrefix`, `-RunnerImage` and `-WhatIf` work as in `Start-RunnerFleet.ps1`.
-- To stop them: `& (./ci/runner-fleet/Install-Compose.ps1) -p windows-nano-baseimages down`. Then remove the runners under the repository's **Settings → Actions → Runners**.
+- To remove them for good: `& (./ci/runner-fleet/Install-Compose.ps1) -p windows-nano-baseimages down`. Then remove the runners under the repository's **Settings → Actions → Runners**. To stop them for a while, see the next section.
+
+## Fewer runners for a while
+
+`Set-RunnerCount.ps1` keeps `runner1` to `runner<Count>` running in every runner project (the fleet and each repository's runners) and stops the rest. It never touches the artifact cache.
+
+```powershell
+./ci/runner-fleet/Set-RunnerCount.ps1 -Count 1 -WhatIf   # see what it would do
+./ci/runner-fleet/Set-RunnerCount.ps1 -Count 1           # one runner per repository
+./ci/runner-fleet/Set-RunnerCount.ps1 -Count 5           # back to full size
+```
+
+- **Stopping waits for jobs.** Runners above `-Count` are stopped through `Stop-ActionRunners.ps1 -Container`, which waits until GitHub reports each runner idle in the repository it serves. `-DrainMinutes` (default 60) and `-Force` work the same way as there.
+- **Starting needs no token.** Stopped runners are still registered with GitHub. They show as offline while stopped, and `docker start` brings them back.
+- **Stopped stays stopped,** through Docker and host restarts (`restart: unless-stopped`). The exception is running `Start-RunnerFleet.ps1` or `Start-RepoRunners.ps1`, which starts every runner it manages.
+- **`-Project windows-nano-ci`** scales only the fleet, and **`-Project windows-nano-baseimages`** only that repository's runners.
+- **It can't create runners.** A runner the project never created needs a registration token. The script says which start script to run with which `-Count`.
 
 ## Cutover
 

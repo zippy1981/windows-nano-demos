@@ -2,11 +2,13 @@
 .SYNOPSIS
 Scaffolds a new Nano Server image folder under nano-server/.
 .DESCRIPTION
-Creates nano-server/nano-server-<Name>/ with a first-draft Dockerfile, build.cmd and README.md that follow this
-repository's conventions: the WINDOWS_VERSION and BASE_IMAGE build arguments, the 4 GB build memory limit, a
-download-to-a-file-then-extract RUN, the ContainerUser entry point, and the published image name.
+Creates nano-server/nano-server-<Name>/ with a first-draft Dockerfile, build.cmd and README.md, plus
+.github/workflows/<Name>-container.yml, that follow this repository's conventions: the WINDOWS_VERSION and
+BASE_IMAGE build arguments, the 4 GB build memory limit, a download-to-a-file-then-extract RUN, the ContainerUser
+entry point, the published image name, and a caller workflow for the shared build workflow.
 
-The script never overwrites an existing image folder unless -Force is passed. Use -WhatIf to see what it would write.
+The script never overwrites an existing image folder or workflow unless -Force is passed. Use -WhatIf to see what it
+would write.
 .PARAMETER Name
 The image name in lowercase kebab-case, for example ripgrep or my-tool. The folder is nano-server/nano-server-<Name>
 and the image is windows-nano-<Name>.
@@ -89,7 +91,13 @@ $installDirectory = "C:\Program Files\$Name"
 $installEnvironment = ($Name -replace '-', '_').ToUpperInvariant() + '_DIR'
 $imageName = "windows-nano-$Name"
 $folderName = "nano-server-$Name"
+$imageContext = "nano-server/$folderName"
 $imageDirectory = Join-Path $RepositoryRoot (Join-Path 'nano-server' $folderName)
+$workflowName = "$Name-container.yml"
+$workflowPath = Join-Path $RepositoryRoot (Join-Path '.github/workflows' $workflowName)
+$workflowDisplayName = ($Name -split '-' | ForEach-Object {
+    $_.Substring(0, 1).ToUpperInvariant() + $_.Substring(1)
+}) -join ' '
 $archiveName = [System.IO.Path]::GetFileName(([uri]$Url).AbsolutePath)
 if (-not $archiveName -or $archiveName -eq '/') { $archiveName = 'artifact.zip' }
 
@@ -244,7 +252,7 @@ Set `WINDOWS_VERSION` to 2019, 2022 or 2025, and `BASE_IMAGE` to override the ba
 ## Before publishing
 
 - [ ] Add `smoke-test.ps1` next to the Dockerfile.
-- [ ] Add `.github/workflows/__NAME__.yml` calling `.github/workflows/build-windows-image.yml`.
+- [ ] Review the generated `.github/workflows/__WORKFLOW__` caller workflow.
 - [ ] Add the image to the root README image list.
 - [ ] Run `uv run pytest` and `uv run pre-commit run --all-files`.
 '@
@@ -257,33 +265,78 @@ $readme = $readmeTemplate.
     Replace('__INSTALL_DIRECTORY__', $installDirectory).
     Replace('__INSTALL_ENVIRONMENT__', $installEnvironment).
     Replace('__EXTRACTION_TOOL__', $ExtractionTool).
-    Replace('__EXTRACTION_README__', $extractionReadme)
+    Replace('__EXTRACTION_README__', $extractionReadme).
+    Replace('__WORKFLOW__', $workflowName)
 
-$files = [ordered]@{
-    Dockerfile = @{ Content = $dockerfile; EndOfLine = "`n" }
-    'build.cmd' = @{ Content = $buildCommand; EndOfLine = "`r`n" }
-    'README.md' = @{ Content = $readme; EndOfLine = "`n" }
-}
+$workflowTemplate = @'
+# Builds and tests __IMAGE_NAME__ for every Windows version through the shared workflow (ADR 0009)
+name: __DISPLAY_NAME__ container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '__CONTEXT__/**'
+      - '.github/workflows/__WORKFLOW__'
+      - '.github/workflows/build-windows-image.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '__CONTEXT__/**'
+      - '.github/workflows/__WORKFLOW__'
+      - '.github/workflows/build-windows-image.yml'
+  workflow_dispatch:
+
+# A new push to a pull request cancels that pull request's older runs. Pushes to main always run to completion.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-windows-image.yml
+    with:
+      context: __CONTEXT__
+      image: __IMAGE_NAME__
+'@
+
+$workflow = $workflowTemplate.
+    Replace('__IMAGE_NAME__', $imageName).
+    Replace('__DISPLAY_NAME__', $workflowDisplayName).
+    Replace('__CONTEXT__', $imageContext).
+    Replace('__WORKFLOW__', $workflowName)
+
+$files = @(
+    [pscustomobject]@{ Path = (Join-Path $imageDirectory 'Dockerfile'); Content = $dockerfile; EndOfLine = "`n" }
+    [pscustomobject]@{ Path = (Join-Path $imageDirectory 'build.cmd'); Content = $buildCommand; EndOfLine = "`r`n" }
+    [pscustomobject]@{ Path = (Join-Path $imageDirectory 'README.md'); Content = $readme; EndOfLine = "`n" }
+    [pscustomobject]@{ Path = $workflowPath; Content = $workflow; EndOfLine = "`n" }
+)
 
 if ((Test-Path -LiteralPath $imageDirectory) -and -not $Force) {
     throw "Image folder '$imageDirectory' already exists. Pass -Force to overwrite the generated files."
 }
 
-if ($PSCmdlet.ShouldProcess($imageDirectory, 'Create Nano Server image scaffold')) {
-    $null = New-Item -ItemType Directory -Path $imageDirectory -Force
-    foreach ($entry in $files.GetEnumerator()) {
-        $path = Join-Path $imageDirectory $entry.Key
-        if ((Test-Path -LiteralPath $path) -and -not $Force) {
-            throw "File '$path' already exists. Pass -Force to overwrite it."
+foreach ($file in $files) {
+    if ((Test-Path -LiteralPath $file.Path) -and -not $Force) {
+        throw "File '$($file.Path)' already exists. Pass -Force to overwrite it."
+    }
+}
+
+if ($PSCmdlet.ShouldProcess("$imageDirectory and $workflowPath", 'Create Nano Server image scaffold')) {
+    foreach ($file in $files) {
+        $parent = Split-Path -Parent $file.Path
+        if (-not (Test-Path -LiteralPath $parent)) {
+            $null = New-Item -ItemType Directory -Path $parent -Force
         }
 
-        $content = $entry.Value.Content.Replace("`r`n", "`n")
-        if ($entry.Value.EndOfLine -eq "`r`n") {
+        $content = $file.Content.Replace("`r`n", "`n")
+        if ($file.EndOfLine -eq "`r`n") {
             $content = $content.Replace("`n", "`r`n")
         }
-        $content = $content.TrimEnd([char[]]"`r`n") + $entry.Value.EndOfLine
+        $content = $content.TrimEnd([char[]]"`r`n") + $file.EndOfLine
 
-        [System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::WriteAllText($file.Path, $content, [System.Text.UTF8Encoding]::new($false))
     }
 }
 
@@ -294,6 +347,7 @@ if ($PSCmdlet.ShouldProcess($imageDirectory, 'Create Nano Server image scaffold'
     Dockerfile = (Join-Path $imageDirectory 'Dockerfile')
     BuildScript = (Join-Path $imageDirectory 'build.cmd')
     Readme = (Join-Path $imageDirectory 'README.md')
+    Workflow = $workflowPath
     VersionVariable = $versionVariable
     ExtractionTool = $ExtractionTool
 }

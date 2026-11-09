@@ -17,11 +17,11 @@ BeforeAll {
         param(
             [hashtable]$Parameters,
             [switch]$Force,
-            [switch]$WhatIf
+            [switch]$Preview
         )
         $arguments = $Parameters.Clone()
         if ($Force) { $arguments['Force'] = $true }
-        if ($WhatIf) { $arguments['WhatIf'] = $true }
+        if ($Preview) { $arguments['WhatIf'] = $true }
         & $script:generator @arguments
     }
 
@@ -73,9 +73,11 @@ Describe 'New-NanoServerImage scaffold' {
         $result.Dockerfile | Should -Be (Join-Path $result.Folder 'Dockerfile')
         $result.BuildScript | Should -Be (Join-Path $result.Folder 'build.cmd')
         $result.Readme | Should -Be (Join-Path $result.Folder 'README.md')
+        $result.Workflow | Should -Be (Join-Path $script:root '.github/workflows/tool-container.yml')
         Test-Path -LiteralPath $result.Dockerfile | Should -BeTrue
         Test-Path -LiteralPath $result.BuildScript | Should -BeTrue
         Test-Path -LiteralPath $result.Readme | Should -BeTrue
+        Test-Path -LiteralPath $result.Workflow | Should -BeTrue
     }
 
     It 'uses a placeholder URL when -Url is omitted' {
@@ -112,6 +114,21 @@ Describe 'New-NanoServerImage scaffold' {
         $build | Should -BeLike '*-t zippy1981/windows-nano-tool:%WINDOWS_VERSION%*'
     }
 
+    It 'writes a workflow that calls the shared build workflow' {
+        $result = Invoke-Generator -Parameters @{ Name = 'my-tool'; Url = 'https://example.com/tool.zip'; RepositoryRoot = $script:root }
+        $workflow = [System.IO.File]::ReadAllText($result.Workflow)
+
+        $workflow | Should -BeLike '*name: My Tool container*'
+        $workflow | Should -BeLike '*nano-server/nano-server-my-tool/**'
+        $workflow | Should -BeLike '*.github/workflows/my-tool-container.yml*'
+        $workflow | Should -BeLike '*.github/workflows/build-windows-image.yml*'
+        $workflow | Should -BeLike '*uses: ./.github/workflows/build-windows-image.yml*'
+        $workflow | Should -BeLike '*context: nano-server/nano-server-my-tool*'
+        $workflow | Should -BeLike '*image: windows-nano-my-tool*'
+        $workflow | Should -BeLike '*github.event_name == ''pull_request''*'
+        $workflow.EndsWith("`n") | Should -BeTrue
+    }
+
     It 'writes a README that names the remaining publishing work' {
         $null = Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/tool.zip'; RepositoryRoot = $script:root }
         $readme = Get-GeneratedText -Name tool -File README.md
@@ -120,7 +137,7 @@ Describe 'New-NanoServerImage scaffold' {
         $readme | Should -BeLike '*<https://example.com/tool.zip>*'
         $readme.EndsWith("`n") | Should -BeTrue
         $readme | Should -BeLike '*smoke-test.ps1*'
-        $readme | Should -BeLike '*build-windows-image.yml*'
+        $readme | Should -BeLike '*.github/workflows/tool-container.yml*'
         $readme | Should -BeLike '*root README image list*'
     }
 }
@@ -214,6 +231,15 @@ Describe 'New-NanoServerImage output safety' {
         { Invoke-Generator -Parameters $parameters } | Should -Throw -ExpectedMessage '*already exists*'
     }
 
+    It 'refuses to overwrite an existing workflow' {
+        $workflow = Join-Path $script:root '.github/workflows/tool-container.yml'
+        $null = New-Item -ItemType Directory -Path (Split-Path -Parent $workflow) -Force
+        [System.IO.File]::WriteAllText($workflow, 'stale')
+
+        { Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/tool.zip'; RepositoryRoot = $script:root } } |
+            Should -Throw -ExpectedMessage '*already exists*'
+    }
+
     It 'overwrites with -Force' {
         $null = Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/first.zip'; RepositoryRoot = $script:root }
         $null = Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/second.zip'; RepositoryRoot = $script:root } -Force
@@ -221,10 +247,20 @@ Describe 'New-NanoServerImage output safety' {
         Get-GeneratedText -Name tool -File README.md | Should -BeLike '*second.zip*'
     }
 
+    It 'overwrites an existing workflow with -Force' {
+        $result = Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/tool.zip'; RepositoryRoot = $script:root }
+        [System.IO.File]::WriteAllText($result.Workflow, 'stale')
+
+        $null = Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/tool.zip'; RepositoryRoot = $script:root } -Force
+
+        [System.IO.File]::ReadAllText($result.Workflow) | Should -BeLike '*image: windows-nano-tool*'
+    }
+
     It 'creates nothing with -WhatIf' {
-        $result = Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/tool.zip'; RepositoryRoot = $script:root } -WhatIf
+        $result = Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/tool.zip'; RepositoryRoot = $script:root } -Preview
 
         Test-Path -LiteralPath $result.Folder | Should -BeFalse
+        Test-Path -LiteralPath $result.Workflow | Should -BeFalse
     }
 }
 
@@ -235,14 +271,16 @@ Describe 'New-NanoServerImage line endings' {
         $null = Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/tool.zip'; RepositoryRoot = $script:root }
     }
 
-    It 'writes LF for Dockerfile and README and CRLF for build.cmd' {
+    It 'writes LF for Dockerfile, README and workflow, and CRLF for build.cmd' {
         $folder = Join-Path $script:root 'nano-server/nano-server-tool'
         $dockerfile = [System.IO.File]::ReadAllText((Join-Path $folder 'Dockerfile'))
         $readme = [System.IO.File]::ReadAllText((Join-Path $folder 'README.md'))
+        $workflow = [System.IO.File]::ReadAllText((Join-Path $script:root '.github/workflows/tool-container.yml'))
         $build = [System.IO.File]::ReadAllText((Join-Path $folder 'build.cmd'))
 
         $dockerfile.Contains("`r`n") | Should -BeFalse
         $readme.Contains("`r`n") | Should -BeFalse
+        $workflow.Contains("`r`n") | Should -BeFalse
         $build.Contains("`r`n") | Should -BeTrue
     }
 }
@@ -266,6 +304,7 @@ Describe 'New-NanoServerImage existing image patterns' {
 
         $result.Image | Should -Be "windows-nano-$Name"
         $result.VersionVariable | Should -Be $Variable
+        Test-Path -LiteralPath $result.Workflow | Should -BeTrue
         $dockerfile = Get-GeneratedText -Name $Name -File Dockerfile
         $dockerfile | Should -BeLike "*ARG $Variable=$Version*"
         $dockerfile | Should -BeLike "*$($Url.Replace($Version, "%$Variable%"))*"

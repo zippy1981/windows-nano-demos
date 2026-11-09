@@ -51,6 +51,15 @@ HUB_PREFIXES = {"nano-server": "windows-nano-", "server-core": "windows-serverco
 # ADR 0011: actions owned by these accounts may use version tags; everything else is pinned to a commit
 TRUSTED_ACTION_OWNERS = {"actions"}
 
+# Issue #71: never pipe a download into tar. libarchive on Windows silently drops the first ~64 KB of a zip it reads
+# from a pipe and exits 0 (zippy1981/windows-nano-baseimages#8); Windows' own tar skipped files the same way. Download
+# to a file, then run tar -xf <file>. This matches a pipe into tar, bsdtar or tar.exe, with or without a path or quotes.
+TAR_FROM_PIPE = re.compile(r"""\|\s*&?\s*["']?(?:[^\s|"']*[\\/])?(?:bsd)?tar(?:\.exe)?["']?(?=\s|$)""", re.IGNORECASE)
+# The files that run commands, which the rule applies to (comment lines are skipped)
+SCRIPT_GLOBS = ["**/Dockerfile", "**/*.cmd", "**/*.bat", "**/*.ps1", "**/*.psm1", "**/*.sh", "**/*.yml", "**/*.yaml"]
+_SKIPPED_DIRS = {".git", ".venv", "node_modules", ".ruff_cache", ".pytest_cache"}
+_COMMENT_LINE = re.compile(r"^\s*(?:#|rem(?:\s|$)|::)", re.IGNORECASE)
+
 _DOCKER_COMMAND = re.compile(r"(?m)^\s*(?:\$\w+\s*=\s*)?docker(?:\.exe)?\s")
 
 
@@ -147,3 +156,24 @@ def dockerfile_lines(image_dir: Path) -> list[str]:
     if pending:
         lines.append(pending.strip())
     return lines
+
+
+def script_files() -> list[Path]:
+    """Every file that runs commands: Dockerfiles, cmd and PowerShell scripts, shell scripts and workflows."""
+    return sorted(
+        {
+            p
+            for pattern in SCRIPT_GLOBS
+            for p in REPO_ROOT.glob(pattern)
+            if p.is_file() and not _SKIPPED_DIRS.intersection(p.relative_to(REPO_ROOT).parts)
+        }
+    )
+
+
+def tar_from_pipe_lines(text: str) -> list[tuple[int, str]]:
+    """The (line number, line) pairs that pipe into tar, skipping comment lines."""
+    return [
+        (number, line.strip())
+        for number, line in enumerate(text.splitlines(), start=1)
+        if not _COMMENT_LINE.match(line) and TAR_FROM_PIPE.search(line)
+    ]

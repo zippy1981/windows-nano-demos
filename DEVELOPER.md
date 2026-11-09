@@ -160,6 +160,7 @@ The hooks are configured in [.pre-commit-config.yaml](.pre-commit-config.yaml). 
 4. If copying turns into `0xC0000139`, or the tool needs a subsystem that isn't there (desktop UI, WoW64, LSA logon on 2025), use Server Core and record the exact error in the Dockerfile and README.
 5. Write a `smoke-test.ps1` that exercises the real feature, not just `--version`, and add the image to the API probe's targets if it adds DLLs.
 6. Follow the image conventions in [ADR 0008](docs/adr/0008-images-take-windows-version-defaulting-to-2025-built-as-a-matrix.md) and the [windows-demo-scaffolder agent](.claude/agents/windows-demo-scaffolder.md), and check with `uv run pytest` (ADR 0011).
+7. Download every archive to a file before unpacking it. Never pipe a download into `tar`: on Windows, libarchive silently drops the first ~64 KB of a zip read from a pipe and exits 0 ([windows-nano-baseimages#8](https://github.com/zippy1981/windows-nano-baseimages/issues/8)). `tests/test_no_tar_from_pipe.py` fails on any `| tar` outside a comment.
 
 ## Further reading
 

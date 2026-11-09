@@ -13,6 +13,8 @@ $ErrorActionPreference = 'Stop'
 $script = @'
 $ErrorActionPreference = 'Stop'
 "pwsh $($PSVersionTable.PSVersion)"
+# PowerShell comes from the base image and isn't pinned here (issue #71). 7.4 is the oldest supported PowerShell 7.
+if ($PSVersionTable.PSVersion -lt [version]'7.4.0') { throw "pwsh $($PSVersionTable.PSVersion) is older than 7.4.0" }
 & powershell.exe -NoProfile -Command '"powershell.exe shim ok"'
 git --version
 git init -q C:\t

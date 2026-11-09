@@ -31,9 +31,8 @@ function Invoke-Image {
 # ltsc2019 is OS build 10.0.17763; the image leaves nano out there (see the Dockerfile)
 $isLtsc2019 = (docker image inspect $Image --format '{{.OsVersion}}') -like '10.0.17763*'
 
+# Microsoft Edit comes from the base image, whose own smoke test checks it (ADR 0017)
 $checks = [ordered]@{
-    # The v2.0.0 release's edit.exe reports 2.0.0 on ltsc2019 but 1.2.1 on ltsc2025; the pinned SHA-256 identifies it
-    'edit --version' = 'edit version \d+\.\d+\.\d+'
     'nano --version' = 'GNU nano for Windows 64 bits, v7\.2-22\.1'
     'hx --version'   = 'helix 25\.07\.1'
 }

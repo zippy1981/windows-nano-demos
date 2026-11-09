@@ -21,7 +21,7 @@ You audit the repo against its own conventions and report gaps. You are strictly
 
 ### Images (`nano-server-*/`)
 
-- The `Dockerfile` uses `ARG WINDOWS_VERSION=2025` (ADR 0008), `ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64`, and `FROM ${BASE_IMAGE}`, or explains a servercore exception in a comment.
+- The `Dockerfile` uses `ARG WINDOWS_VERSION=2025` (ADR 0008), `ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}`, and `FROM ${BASE_IMAGE}`, or explains a servercore exception in a comment.
 - The image has a `README.md`, a `build.cmd`, and a workflow in `.github/workflows/` that builds it.
 - The image's workflow calls `.github/workflows/build-windows-image.yml` (ADR 0009), which builds `'2019'`, `'2022'` and `'2025'` with `fail-fast: false`, and the image has a `smoke-test.ps1`. `tests/` checks this, so also flag any convention that ADRs state but `tests/` doesn't check.
 - Tool versions are pinned in an `ENV` block. Flag `latest`, unpinned download URLs, and versions duplicated outside the `ENV` block.

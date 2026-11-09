@@ -17,7 +17,7 @@ Windows container images (nanoserver, with servercore where needed), built and t
 
 ## Images and CI (ADRs 0008, 0009, 0011)
 
-- **Dockerfiles** start with `ARG WINDOWS_VERSION=2025` and `ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64`, and the last stage is `FROM ${BASE_IMAGE}`. Get DLLs from a servercore build stage, never from the host.
+- **Dockerfiles** start with `ARG WINDOWS_VERSION=2025` and `ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}` (`-pwsh` for images that run PowerShell), and the last stage is `FROM ${BASE_IMAGE}` (ADR 0017). The base already has bsdtar, `jq`, Microsoft Edit, `curl` and the Visual C++ runtime, so images don't add them again, and smoke tests cover only what the image adds. Server Core images use `mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64`. Get any other DLLs from a servercore build stage, never from the host.
 - **Builds:** `docker build --memory 4g`, because Hyper-V's 1 GB default hangs builds.
 - **Never pipe a download into `tar`** (`curl ... | tar -xf -`). On Windows, libarchive silently drops the first ~64 KB of a zip read from a pipe and exits 0 ([windows-nano-baseimages#8](https://github.com/zippy1981/windows-nano-baseimages/issues/8)). Download to a file, then `tar -xf <file>`. `tests/test_no_tar_from_pipe.py` enforces it in every Dockerfile, script and workflow.
 - **Workflows:** each image has a small workflow that calls `.github/workflows/build-windows-image.yml`, plus a `<folder>/smoke-test.ps1 -Image <tag>`. Variants use matrix `include` entries with `tag-prefix` (ADR 0005). Only `image-refresh.yml` publishes, and only from `main`.

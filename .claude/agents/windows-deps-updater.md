@@ -14,7 +14,7 @@ You keep the version pins in this repo's Dockerfiles current.
 - PHP for Windows: <https://windows.php.net/downloads/releases/releases.json>. Use the NTS x64 build and note which `vs` toolset it uses (`vs16` or `vs17`), then update `PHP_VS_VERSION` to match. Old releases move to `/downloads/releases/archives/`, so a pinned URL can 404 even though it was valid before.
 - Node.js: <https://nodejs.org/dist/index.json>. Prefer the newest LTS unless the user asks for Current.
 - micro editor: GitHub releases for `zyedidia/micro`. The asset is `micro-<ver>-win64.zip`.
-- Windows base images: `mcr.microsoft.com/windows/nanoserver` tags (ltsc2019, ltsc2022, ltsc2025).
+- Base images: Nano Server images build on `zippy1981/nanoserver-base` (ADR 0017), which is pinned and bumped in [windows-nano-baseimages](https://github.com/zippy1981/windows-nano-baseimages), not here; image-refresh rebuilds when its digest changes. Server Core images and build stages use `mcr.microsoft.com/windows/servercore` tags (ltsc2019, ltsc2022, ltsc2025). Don't pin tools the base already ships (bsdtar, `jq`, Microsoft Edit, PowerShell 7 in `-pwsh`).
 
 ## Procedure
 

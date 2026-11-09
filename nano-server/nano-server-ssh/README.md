@@ -1,6 +1,6 @@
 # OpenSSH server windows nano server container
 
-An SSH server on `mcr.microsoft.com/windows/nanoserver` using [Win32-OpenSSH](https://github.com/PowerShell/Win32-OpenSSH). Clients log in as a real local Windows account that the container creates at start-up with `net user`. Both password and public-key logon work, and `whoami` returns that account, not `ContainerAdministrator`. The login shell is `cmd`.
+An SSH server on [`zippy1981/nanoserver-base`](https://github.com/zippy1981/windows-nano-baseimages/tree/main/images/nanoserver-base) (ADR 0017), using [Win32-OpenSSH](https://github.com/PowerShell/Win32-OpenSSH). Clients log in as a real local Windows account that the container creates at start-up with `net user`. Both password and public-key logon work, and `whoami` returns that account, not `ContainerAdministrator`. The login shell is `cmd`.
 
 ## Running
 

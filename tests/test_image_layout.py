@@ -9,6 +9,7 @@ from repo_conventions import (
     BASE_IMAGE_ARG,
     HUB_PREFIXES,
     IMAGE_PARENTS,
+    base_family,
     callers_of_reusable,
     dockerfile_lines,
     image_context,
@@ -30,7 +31,7 @@ class TestImageLayout:
         assert image_dir.name.startswith(f"{parent}-"), f"{image_context(image_dir)} must be named {parent}-<name>"
 
     def test_directory_matches_the_base_image(self, image_dir: Path) -> None:
-        bases = {m.group(1) for line in dockerfile_lines(image_dir) if (m := BASE_IMAGE_ARG.match(line))}
+        bases = {base_family(m) for line in dockerfile_lines(image_dir) if (m := BASE_IMAGE_ARG.match(line))}
         wanted = IMAGE_PARENTS[image_dir.parent.name]
         assert bases == {wanted}, (
             f"{image_context(image_dir)} defaults BASE_IMAGE to {bases or 'nothing'}, so it belongs under "

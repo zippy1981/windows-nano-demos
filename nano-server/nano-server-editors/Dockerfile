@@ -1,4 +1,4 @@
-# windows-nano-editors: Console text editors on Nano Server: Microsoft Edit, GNU nano and Helix.
+# windows-nano-editors: Console text editors on Nano Server: GNU nano and Helix, plus Microsoft Edit from the base image.
 # Docker Hub categories: developer-tools
 #
 # The editors need a console: run the image with docker run -it. CI runs only their non-interactive checks.
@@ -9,20 +9,17 @@
 
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
 ARG WINDOWS_VERSION=2025
-# The image the final stage is built on. Defaults to Nano Server for WINDOWS_VERSION; CI pins it to a digest.
-# Set with --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64.
-ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+# The image the final stage is built on. Defaults to nanoserver-base for WINDOWS_VERSION, which has bsdtar, jq,
+# Microsoft Edit and the Visual C++ runtime (ADR 0017). CI pins it to a digest.
+# Set with --build-arg BASE_IMAGE=zippy1981/nanoserver-base:ltsc2022.
+ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
 
-# Downloads are checked and unpacked in a throwaway Server Core stage, which has PowerShell and can run the VC++
-# redistributable. Helix needs vcruntime140.dll, which Nano Server doesn't ship and can't install.
+# Downloads are checked and unpacked in a throwaway Server Core stage, which has PowerShell. Helix needs
+# vcruntime140.dll and vcruntime140_1.dll, which the base image ships in System32.
 FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS fetch
 SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 # Docker passes each RUN to powershell -Command, and Windows argument parsing strips double quotes, so strings with
 # spaces use single quotes and + rather than "...".
-RUN curl.exe -fsSLo C:\vc_redist.x64.exe https://aka.ms/vc14/vc_redist.x64.exe; \
-    $p = Start-Process C:\vc_redist.x64.exe -ArgumentList '/install', '/quiet', '/norestart' -Wait -PassThru; \
-    if ($p.ExitCode -notin 0, 3010) { throw ('vc_redist exited with ' + $p.ExitCode) }; \
-    Remove-Item C:\vc_redist.x64.exe
 # 7-Zip unpacks the downloads. The nano zip uses Deflate64, which Windows PowerShell's Expand-Archive can't decompress
 # and tar.exe silently writes as zero bytes. 7zr.exe only reads .7z, so it unpacks the "extra" package that holds 7za.exe.
 ENV SEVENZIP_VERSION=26.05 \
@@ -38,14 +35,8 @@ RUN $base = 'https://github.com/ip7z/7zip/releases/download/' + ${env:SEVENZIP_V
     Remove-Item C:\7zr.exe, C:\7z-extra.7z
 COPY Get-VerifiedZip.ps1 C:/build/Get-VerifiedZip.ps1
 
-# One RUN per editor, so a broken one is easy to drop. Each download is pinned by version and SHA-256.
-ENV EDIT_VERSION=2.0.0 \
-    EDIT_SHA256=97B8F2C667FAEA8F211AF5F9C879602949164911D74D16F540BBE31AD46C14CB
-RUN C:\build\Get-VerifiedZip.ps1 -Destination C:\x\edit -Executable "edit-${env:EDIT_VERSION}-x86_64-windows\edit.exe" \
-      -Url "https://github.com/microsoft/edit/releases/download/v${env:EDIT_VERSION}/edit-${env:EDIT_VERSION}-x86_64-windows.zip" \
-      -Sha256 ${env:EDIT_SHA256}; \
-    New-Item -ItemType Directory C:\editors\edit | Out-Null; \
-    Move-Item "C:\x\edit\edit-${env:EDIT_VERSION}-x86_64-windows\edit.exe" C:\editors\edit
+# One RUN per editor, so a broken one is easy to drop. Each download is pinned by version and SHA-256. Microsoft Edit
+# isn't downloaded: the base image has it on PATH (ADR 0017).
 
 # GNU nano 7.2 for Windows (okibcn), built with MinGW against the UCRT. The port's last release is from 2023.
 ENV NANO_VERSION=7.2-22.1 \
@@ -66,8 +57,6 @@ RUN C:\build\Get-VerifiedZip.ps1 -Destination C:\x\helix -Executable "helix-${en
 
 FROM ${BASE_IMAGE}
 
-COPY --from=fetch ["C:/Windows/System32/vcruntime140.dll", "C:/Windows/System32/vcruntime140_1.dll", "C:/Windows/System32/"]
-COPY --from=fetch ["C:/editors/edit", "C:/Program Files/edit"]
 COPY --from=fetch ["C:/editors/nano", "C:/Program Files/nano"]
 COPY --from=fetch ["C:/editors/helix", "C:/Program Files/helix"]
 
@@ -80,4 +69,4 @@ USER ContainerUser
 
 # Helix finds its themes and tree-sitter grammars through HELIX_RUNTIME
 ENV HELIX_RUNTIME="C:\\Program Files\\helix\\runtime"
-ENV PATH="C:\\Program Files\\edit;C:\\Program Files\\nano;C:\\Program Files\\helix;${PATH}"
+ENV PATH="C:\\Program Files\\nano;C:\\Program Files\\helix;${PATH}"

@@ -20,7 +20,7 @@ You own the whole new folder and its generated wiring: the folder layout, a firs
 
   ```dockerfile
   ARG WINDOWS_VERSION=2025
-  ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+  ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
   FROM ${BASE_IMAGE}
   ```
 

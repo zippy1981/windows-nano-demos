@@ -19,5 +19,9 @@ if ($LASTEXITCODE) { throw "smoke test failed: $LASTEXITCODE" }
 $version = docker run --rm $Image pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
 if ($LASTEXITCODE) { throw "pwsh failed: $LASTEXITCODE" }
 Write-Host "pwsh $version"
+# PowerShell comes from the base image, so its version isn't pinned here (issue #71). 7.4 is the oldest supported
+# PowerShell 7 (LTS) release, and the pinned modules need it.
+$minimum = [version]'7.4.0'
+if ([version](($version | Select-Object -Last 1) -replace '-.*$') -lt $minimum) { throw "pwsh $version is older than $minimum" }
 $cmd = docker image inspect $Image --format '{{json .Config.Cmd}}'
 if ($cmd -ne '["pwsh"]') { throw "unexpected default CMD: $cmd" }

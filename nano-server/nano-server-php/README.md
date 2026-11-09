@@ -16,7 +16,7 @@ Available at <https://hub.docker.com/repository/docker/zippy1981/windows-nano-ph
 | micro | 2.0.15 |
 | Composer | latest at build time |
 
-The PHP build enables the `curl`, `fileinfo`, `openssl` and `zip` extensions. The image is built on [`zippy1981/nanoserver-base`](https://github.com/zippy1981/windows-nano-baseimages/tree/main/images/nanoserver-base), which ships the Visual C++ runtime DLLs PHP needs, as well as bsdtar, `jq` and Microsoft Edit (ADR 0016).
+The PHP build enables the `curl`, `fileinfo`, `openssl` and `zip` extensions. The image is built on [`zippy1981/nanoserver-base`](https://github.com/zippy1981/windows-nano-baseimages/tree/main/images/nanoserver-base), which ships the Visual C++ runtime DLLs PHP needs, as well as bsdtar, `jq` and Microsoft Edit (ADR 0017).
 
 ## Building
 

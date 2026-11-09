@@ -118,7 +118,7 @@ class TestDiscovery:
 
     def test_applies_base_image_overrides(self) -> None:
         ssh = next(s for s in rm.discover_images() if s.context == "nano-server/nano-server-ssh")
-        # 2022 is the Dockerfile's default (ADR 0016); 2025 is the workflow's Server Core override
+        # 2022 is the Dockerfile's default (ADR 0017); 2025 is the workflow's Server Core override
         assert ssh.bases["2022"] == "zippy1981/nanoserver-base:ltsc2022"
         assert ssh.bases["2025"] == "mcr.microsoft.com/windows/servercore:ltsc2025-amd64"
 

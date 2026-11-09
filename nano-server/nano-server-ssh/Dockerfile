@@ -12,7 +12,7 @@
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
 ARG WINDOWS_VERSION=2025
 # The image the final stage is built on. Defaults to nanoserver-base for WINDOWS_VERSION, which has bsdtar, jq,
-# Microsoft Edit and the Visual C++ runtime (ADR 0016). CI pins it to a digest.
+# Microsoft Edit and the Visual C++ runtime (ADR 0017). CI pins it to a digest.
 # Set with --build-arg BASE_IMAGE=zippy1981/nanoserver-base:ltsc2022.
 ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
 

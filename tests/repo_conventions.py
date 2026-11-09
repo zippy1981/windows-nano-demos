@@ -28,7 +28,7 @@ WINDOWS_VERSION_EXCEPTIONS: dict[str, list[str]] = {
     # ADR 0014: the artifact cache only runs on the ltsc2025 runner host
     "nano-server/nano-server-artifact-cache": ["2025"],
 }
-# ADR 0016: Nano Server images build on zippy1981/nanoserver-base (-pwsh when they run PowerShell), and Server Core
+# ADR 0017: Nano Server images build on zippy1981/nanoserver-base (-pwsh when they run PowerShell), and Server Core
 # images on Microsoft's Server Core. The named group is the base's family, which picks the image's directory (ADR 0012).
 BASE_IMAGE_ARG = re.compile(
     r"^ARG BASE_IMAGE=(?:"

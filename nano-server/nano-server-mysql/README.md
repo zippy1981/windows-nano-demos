@@ -1,6 +1,6 @@
 # MySQL windows nano server container
 
-MySQL Community Server 8.4 (LTS) on [`zippy1981/nanoserver-base`](https://github.com/zippy1981/windows-nano-baseimages/tree/main/images/nanoserver-base) (ADR 0016), using the official `winx64` zip from MySQL. The image holds the server (`mysqld`) and the command-line client tools (`mysql`, `mysqladmin`, `mysqldump`, ...). It runs as `ContainerUser`, not as an administrator.
+MySQL Community Server 8.4 (LTS) on [`zippy1981/nanoserver-base`](https://github.com/zippy1981/windows-nano-baseimages/tree/main/images/nanoserver-base) (ADR 0017), using the official `winx64` zip from MySQL. The image holds the server (`mysqld`) and the command-line client tools (`mysql`, `mysqladmin`, `mysqldump`, ...). It runs as `ContainerUser`, not as an administrator.
 
 ## Running
 

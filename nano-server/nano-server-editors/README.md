@@ -4,7 +4,7 @@ Terminal text editors that run in a Nano Server container, so the dev images her
 
 | Editor | Version | Command | Notes |
 | --- | --- | --- | --- |
-| [Microsoft Edit](https://github.com/microsoft/edit) | The base image's | `edit` | Comes from [`zippy1981/nanoserver-base`](https://github.com/zippy1981/windows-nano-baseimages/tree/main/images/nanoserver-base), which this image is built on (ADR 0016). Loads `icu.dll` at run time for Unicode-aware search and word wrap. Nano Server has no `icu.dll`, so those fall back to simpler behaviour. |
+| [Microsoft Edit](https://github.com/microsoft/edit) | The base image's | `edit` | Comes from [`zippy1981/nanoserver-base`](https://github.com/zippy1981/windows-nano-baseimages/tree/main/images/nanoserver-base), which this image is built on (ADR 0017). Loads `icu.dll` at run time for Unicode-aware search and word wrap. Nano Server has no `icu.dll`, so those fall back to simpler behaviour. |
 | [GNU nano](https://github.com/okibcn/nano-for-windows) (okibcn's Windows port) | 7.2 | `nano` | **Not on ltsc2019**: it exits with `0xC0000139` (entry point not found) there, so that image leaves it out. Built with MinGW against the UCRT. The port's last release is from April 2023. A sample `.nanorc` is in `C:\Program Files\nano`; copy it to `%USERPROFILE%\.nanorc` to use it. |
 | [Helix](https://helix-editor.com/) | 25.07.1 | `hx` | Needs `vcruntime140.dll` and `vcruntime140_1.dll`, which the base image ships. `HELIX_RUNTIME` points at its themes and grammars. No language servers are installed. |
 

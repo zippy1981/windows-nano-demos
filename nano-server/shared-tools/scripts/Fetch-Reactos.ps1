@@ -34,7 +34,7 @@ $rosBuilds = @{
 }
 if (-not $rosBuilds.ContainsKey($ReactosVersion)) { throw "no pinned ReactOS nightly for version $ReactosVersion" }
 $rosBuild = $rosBuilds[$ReactosVersion]
-Write-Host "ReactOS $ReactosVersion: nightly $($rosBuild.Build), source commit $($rosBuild.Commit)"
+Write-Host "ReactOS ${ReactosVersion}: nightly $($rosBuild.Build), source commit $($rosBuild.Commit)"
 $rosFile = "reactos-bootcd-$($rosBuild.Build)-x64-msvc-win-dbg.7z"
 $rosUrl = "https://iso.reactos.org/bootcd/$rosFile"
 $rosSha256 = $rosBuild.Sha256

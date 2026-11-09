@@ -30,8 +30,10 @@ The main options:
 
 - `-Name` is mandatory, lowercase kebab-case. It produces `nano-server/nano-server-<name>`
   and the image `windows-nano-<name>`.
-- `-Url` defaults to a placeholder. `-VersionString` replaces that exact version
-  substring in the URL with a Docker build argument.
+- `-Url` defaults to a placeholder. Percent-delimited tokens such as
+  `%MINGIT_RELEASE%` are allowed and passed through for cmd to expand in the
+  Dockerfile. `-VersionString` replaces that exact version substring in the URL
+  with a Docker build argument.
 - `-ExtractionTool` defaults to `tar.exe`. Use `7z.exe` for a Deflate64 ZIP that
   tar cannot read, or pass `-ExtractionArguments` for another extractor.
 - `-WhatIf` previews the files. `-Force` overwrites an existing folder or workflow,

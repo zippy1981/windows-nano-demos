@@ -86,10 +86,20 @@ Describe 'New-NanoServerImage scaffold' {
         $dockerfile | Should -BeLike '*https://example.com/download/artifact.zip*'
     }
 
+    It 'accepts cmd environment-variable placeholders in the URL' {
+        $url = 'https://github.com/git-for-windows/git/releases/download/v%MINGIT_RELEASE%/MinGit-%MINGIT_BUILD%-64-bit.zip'
+        $null = Invoke-Generator -Parameters @{ Name = 'git'; Url = $url; RepositoryRoot = $script:root }
+        $dockerfile = Get-GeneratedText -Name git -File Dockerfile
+
+        $dockerfile | Should -BeLike "*$url*"
+        $dockerfile | Should -BeLike '*curl -fLo "C:\MinGit-%MINGIT_BUILD%-64-bit.zip"*'
+    }
+
     It 'writes a Dockerfile with the standard base arguments' {
         $null = Invoke-Generator -Parameters @{ Name = 'tool'; Url = 'https://example.com/tool.zip'; RepositoryRoot = $script:root }
         $dockerfile = Get-GeneratedText -Name tool -File Dockerfile
 
+        $dockerfile | Should -Match '^# windows-nano-tool: \S.{20,}'
         $dockerfile | Should -BeLike '*ARG WINDOWS_VERSION=2025*'
         $dockerfile | Should -BeLike '*# Docker Hub categories: developer-tools*'
         $dockerfile | Should -BeLike '*ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}*'

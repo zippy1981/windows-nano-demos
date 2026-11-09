@@ -13,8 +13,9 @@ would write.
 The image name in lowercase kebab-case, for example ripgrep or my-tool. The folder is nano-server/nano-server-<Name>
 and the image is windows-nano-<Name>.
 .PARAMETER Url
-The artifact URL. The default is a placeholder. When -VersionString is supplied, the version substring in this URL is
-replaced with a Docker build-argument reference.
+The artifact URL. The default is a placeholder. Percent-delimited tokens such as %MINGIT_RELEASE% are allowed and
+passed through for cmd to expand when the Dockerfile runs. When -VersionString is supplied, the version substring in
+this URL is replaced with a Docker build-argument reference.
 .PARAMETER ExtractionTool
 The executable that extracts the artifact. Defaults to tar.exe. For a Deflate64 ZIP that tar.exe cannot read, use
 7z.exe; the script knows 7-Zip's arguments, or pass them with -ExtractionArguments.
@@ -46,7 +47,10 @@ param(
     [ValidatePattern('^[a-z0-9]+(-[a-z0-9]+)*$')]
     [string]$Name,
 
-    [ValidateScript({ [uri]::IsWellFormedUriString($_, [System.UriKind]::Absolute) })]
+    [ValidateScript({
+            $url = [regex]::Replace($_, '%[A-Za-z_][A-Za-z0-9_]*%', 'placeholder')
+            [uri]::IsWellFormedUriString($url, [System.UriKind]::Absolute)
+        })]
     [string]$Url = 'https://example.com/download/artifact.zip',
 
     [ValidateNotNullOrEmpty()]
@@ -98,7 +102,8 @@ $workflowPath = Join-Path $RepositoryRoot (Join-Path '.github/workflows' $workfl
 $workflowDisplayName = ($Name -split '-' | ForEach-Object {
     $_.Substring(0, 1).ToUpperInvariant() + $_.Substring(1)
 }) -join ' '
-$archiveName = [System.IO.Path]::GetFileName(([uri]$Url).AbsolutePath)
+$urlPath = ($Url -split '[?#]', 2)[0]
+$archiveName = ($urlPath -replace '^[a-z][a-z0-9+.-]*://[^/]+/?', '').Split('/')[-1]
 if (-not $archiveName -or $archiveName -eq '/') { $archiveName = 'artifact.zip' }
 
 $urlWithVersion = $Url
@@ -118,7 +123,7 @@ ENV $versionVariable=`${$versionVariable}
 }
 
 $dockerfileTemplate = @'
-# __IMAGE_NAME__: __NAME__ on Nano Server.
+# __IMAGE_NAME__: installs the __NAME__ artifact on Nano Server.
 # Docker Hub categories: developer-tools
 #
 # Build from this folder (build.cmd does the same, and also tags zippy1981/__IMAGE_NAME__):

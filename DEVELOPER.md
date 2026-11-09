@@ -106,6 +106,19 @@ Two plans look at filling Nano Server's gaps with open-source builds of the miss
 | Why a PR or run failed | `uv run python scripts/ci_triage.py --pr <n>` | `ci-triage`, `ci-watcher` |
 | Merge conflicts in list-like files (the README image table) | `uv run python scripts/union_merge.py README.md` | `pr-shepherd` |
 | Remove an experiment's containers and images | `./scripts/Remove-DockerArtifacts.ps1 -Prefix <p> -WhatIf` | `safe-docker-cleanup` |
+| Start a new image folder | `./scripts/New-NanoServerImage.ps1 -Name <name> -Url <artifact-url>` | `windows-demo-scaffolder` |
+
+### Scaffolding a new image
+
+`scripts/New-NanoServerImage.ps1` writes a first-draft `Dockerfile`, `build.cmd` and `README.md` under `nano-server/nano-server-<name>`:
+
+```powershell
+./scripts/New-NanoServerImage.ps1 -Name ripgrep `
+    -Url https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-pc-windows-msvc.zip `
+    -VersionString 14.1.1
+```
+
+The script refuses to overwrite an existing folder unless `-Force` is passed, and supports `-WhatIf`. It uses `tar.exe` by default; pass `-ExtractionTool 7z.exe` for a Deflate64 ZIP that tar cannot read, or `-ExtractionArguments` for another extractor. It writes LF Dockerfiles and READMEs and a CRLF `build.cmd`. It does not add the smoke test, workflow or root README row; the generated README lists those as remaining work.
 
 ## PowerShell lint
 

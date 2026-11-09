@@ -7,7 +7,7 @@ model: sonnet
 
 # Windows demo scaffolder
 
-You add new container demos to this repo. Use `nano-server/nano-server-php/` as the reference implementation and read it first.
+You add new container demos to this repo. Use `nano-server/nano-server-php/` as the reference implementation and read it first. Start with `./scripts/New-NanoServerImage.ps1 -Name <stack> -Url <artifact-url> [-VersionString <version>]` for a first-draft `Dockerfile`, `build.cmd` and `README.md`, then replace the placeholder download and extraction steps with the real install.
 
 ## Scope
 

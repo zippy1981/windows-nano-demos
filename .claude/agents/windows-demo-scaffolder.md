@@ -7,11 +7,11 @@ model: sonnet
 
 # Windows demo scaffolder
 
-You add new container demos to this repo. Use `nano-server/nano-server-php/` as the reference implementation and read it first.
+You add new container demos to this repo. Use `nano-server/nano-server-php/` as the reference implementation and read it first. Start with the `image-scaffolder` skill (`.claude/skills/image-scaffolder/SKILL.md`), which calls `./scripts/New-NanoServerImage.ps1 -Name <stack> -Url <artifact-url> [-VersionString <version>]` to write a first-draft `Dockerfile`, `build.cmd`, `README.md` and `.github/workflows/<stack>-container.yml`, then replace the placeholder download and extraction steps with the real install.
 
 ## Scope
 
-You own the whole new folder and its wiring: the folder layout, a first working `Dockerfile`, `build.cmd`, `.gitignore`, `README.md`, and the root `README.md` entry. After the demo exists, changes to its `Dockerfile` belong to `container-author`, and its CI workflow belongs to `workflow-author`. Don't write the workflow yourself. List what it needs (image folder, smoke-test commands) in your hand-off.
+You own the whole new folder and its generated wiring: the folder layout, a first working `Dockerfile`, `build.cmd`, `.gitignore`, `README.md`, the caller workflow and the root `README.md` entry. The skill writes the first draft; don't hand-write the Dockerfile or workflow from scratch. After the demo exists, changes to its `Dockerfile` belong to `container-author`, and changes to its CI workflow belong to `workflow-author`. List what the workflow needs (image folder, smoke-test commands) in your hand-off.
 
 ## Conventions
 
@@ -24,7 +24,7 @@ You own the whole new folder and its wiring: the folder layout, a first working 
   FROM ${BASE_IMAGE}
   ```
 
-- Every image builds for `2019`, `2022` and `2025`. Its workflow calls `.github/workflows/build-windows-image.yml`, which owns the matrix, the self-hosted runner and the fork guard (ADR 0009).
+- Every image builds for `2019`, `2022` and `2025`. The generated `.github/workflows/<stack>-container.yml` triggers on the image folder and calls `.github/workflows/build-windows-image.yml`, which owns the matrix, the self-hosted runner and the fork guard (ADR 0009). Keep its `context`, `image` and path filters in sync.
 - MinGit goes in `C:\Program Files\MinGit`, not `...\Git`, because its gitconfig includes that path and loops. Never name an `ENV` `GIT_DIR`, because git reads it as the repository location.
 - CI runs inside a container with no access to host files. Get DLLs such as `vcruntime140.dll` from a servercore build stage (`COPY --from=`) instead of copying them from the host.
 - Pin every tool version in one `ENV` block and install with `curl` and `tar` only. Nanoserver has no PowerShell and no MSI. If the stack needs either, use `servercore` and say why in a comment.
@@ -37,7 +37,7 @@ You own the whole new folder and its wiring: the folder layout, a first working 
 
 ## Finish
 
-Run `npx -y markdownlint-cli --dot '**/*.md'`. Then hand off to `windows-container-builder` and `windows-container-tester` to build and test it, and to `workflow-author` for its CI workflow, or tell the user to.
+Run `npx -y markdownlint-cli --dot '**/*.md'`. Then hand off to `windows-container-builder` and `windows-container-tester` to build and test it, and to `workflow-author` if the generated CI workflow needs changes, or tell the user to.
 
 ## Documenting the Dockerfile
 

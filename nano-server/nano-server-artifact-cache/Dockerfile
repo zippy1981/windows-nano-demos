@@ -11,9 +11,10 @@
 
 # Windows Server LTSC version to build for: only 2025 is supported for this image. Set with --build-arg WINDOWS_VERSION=2025.
 ARG WINDOWS_VERSION=2025
-# The image the final stage is built on. Defaults to Nano Server for WINDOWS_VERSION; CI pins it to a digest.
-# Set with --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2025-amd64.
-ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+# The image the final stage is built on. Defaults to nanoserver-base for WINDOWS_VERSION, which has bsdtar, jq,
+# Microsoft Edit and the Visual C++ runtime (ADR 0016). CI pins it to a digest.
+# Set with --build-arg BASE_IMAGE=zippy1981/nanoserver-base:ltsc2025.
+ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
 
 # Build stage on Server Core: it has the shells and tools the Go build needs. Only caddy.exe leaves this stage.
 FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64 AS build

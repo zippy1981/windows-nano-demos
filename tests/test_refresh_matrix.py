@@ -118,8 +118,13 @@ class TestDiscovery:
 
     def test_applies_base_image_overrides(self) -> None:
         ssh = next(s for s in rm.discover_images() if s.context == "nano-server/nano-server-ssh")
-        assert ssh.bases["2022"] == "mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64"
+        # 2022 is the Dockerfile's default (ADR 0016); 2025 is the workflow's Server Core override
+        assert ssh.bases["2022"] == "zippy1981/nanoserver-base:ltsc2022"
         assert ssh.bases["2025"] == "mcr.microsoft.com/windows/servercore:ltsc2025-amd64"
+
+    def test_uses_the_pwsh_base_for_powershell_images(self) -> None:
+        powershell = next(s for s in rm.discover_images() if s.context == "nano-server/nano-server-powershell")
+        assert powershell.bases["2019"] == "zippy1981/nanoserver-base:ltsc2019-pwsh"
 
 
 class TestRegistries:

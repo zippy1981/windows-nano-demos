@@ -32,4 +32,5 @@ Invoke-Image node -v | Out-Null
 Invoke-Image npm -v | Out-Null
 Invoke-Image composer --version | Out-Null
 Invoke-Image laravel --version | Out-Null
-Invoke-Image where micro | Out-Null
+# Run micro by name: Nano Server has no where.exe, and running it proves it's on PATH
+Invoke-Image micro -version | Out-Null

@@ -11,15 +11,15 @@
 
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
 ARG WINDOWS_VERSION=2025
-# The image the final stage is built on. Defaults to Nano Server for WINDOWS_VERSION; CI pins it to a digest.
-# Set with --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64.
-ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+# The image the final stage is built on. Defaults to nanoserver-base's -pwsh tag for WINDOWS_VERSION: PowerShell 7,
+# bsdtar, jq, Microsoft Edit and the Visual C++ runtime (ADR 0016). CI pins it to a digest.
+# Set with --build-arg BASE_IMAGE=zippy1981/nanoserver-base:ltsc2022-pwsh.
+ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}-pwsh
 FROM ${BASE_IMAGE}
 
 ENV \
     RUNNER_VERSION=2.338.2 \
     DOCKER_VERSION=29.9.3 \
-    PWSH_VERSION=7.6.9 \
     MINGIT_VERSION=2.56.0.4 \
     MINGIT_TAG=v2.56.0.windows.4 \
     RUNNER_DIR="C:\\actions-runner" \
@@ -30,13 +30,10 @@ ENV \
 # The runner configures itself and writes to its own folder, and docker pipe access is easier as admin
 USER ContainerAdministrator
 
-# PowerShell: nano server doesn't ship it, and many actions (and the runner's default Windows shell) need pwsh
-RUN mkdir "%PWSH_DIR%" && \
-    curl -fLo pwsh.zip https://github.com/PowerShell/PowerShell/releases/download/v%PWSH_VERSION%/PowerShell-%PWSH_VERSION%-win-x64.zip && \
-    tar -xf pwsh.zip -C "%PWSH_DIR%" && \
-    del pwsh.zip && \
-    copy "%PWSH_DIR%\pwsh.exe" "%PWSH_DIR%\powershell.exe"
-# The copy above: the runner shells out to powershell.exe, which nano server doesn't have, so pwsh stands in for it
+# PowerShell 7 comes from the base image (the -pwsh tag), already on the machine PATH: many actions, and the runner's
+# default Windows shell, need it. The runner also shells out to powershell.exe, which nano server doesn't have, so a
+# copy of pwsh stands in for it.
+RUN copy "%PWSH_DIR%\pwsh.exe" "%PWSH_DIR%\powershell.exe"
 
 # Docker CLI only. The zip also contains dockerd.exe, which we don't need.
 RUN curl -fLo docker.zip https://download.docker.com/win/static/stable/x86_64/docker-%DOCKER_VERSION%.zip && \
@@ -59,7 +56,7 @@ RUN mkdir "%RUNNER_DIR%" && \
     del runner.zip
 
 # We are ContainerAdministrator, so set the machine path
-RUN setx /M PATH "%PATH%;%PWSH_DIR%;%DOCKER_DIR%;%MINGIT_DIR%\cmd"
+RUN setx /M PATH "%PATH%;%DOCKER_DIR%;%MINGIT_DIR%\cmd"
 
 COPY start.ps1 C:/actions-runner/start.ps1
 

@@ -1,6 +1,6 @@
 # GitHub Actions runner on Windows nano server
 
-A self-hosted [GitHub Actions runner](https://github.com/actions/runner) in a nano server container. It has PowerShell 7, MinGit and the docker CLI. There is no docker daemon in the image. Jobs build and run containers on the host's daemon through its named pipe.
+A self-hosted [GitHub Actions runner](https://github.com/actions/runner) in a nano server container, built on [`zippy1981/nanoserver-base`](https://github.com/zippy1981/windows-nano-baseimages/tree/main/images/nanoserver-base)'s `-pwsh` tag (ADR 0016). It has PowerShell 7 from the base (the smoke test requires 7.4 or later), with a `powershell.exe` copy for the runner, plus MinGit and the docker CLI. There is no docker daemon in the image. Jobs build and run containers on the host's daemon through its named pipe.
 
 This repo's workflows run on it with `runs-on: [self-hosted, windows, docker]`.
 

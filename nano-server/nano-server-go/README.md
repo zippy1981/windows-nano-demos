@@ -34,7 +34,7 @@ set WINDOWS_VERSION=2019
 build.cmd
 ```
 
-`WINDOWS_VERSION` can be `2019`, `2022` or `2025`. To use a different base image, set `BASE_IMAGE` (for example `mcr.microsoft.com/windows/nanoserver:ltsc2025-amd64`) and `build.cmd` passes it to `docker build`.
+`WINDOWS_VERSION` can be `2019`, `2022` or `2025`. To use a different base image, set `BASE_IMAGE` (for example `zippy1981/nanoserver-base:ltsc2025`, the default, ADR 0016) and `build.cmd` passes it to `docker build`.
 
 ### Go version
 

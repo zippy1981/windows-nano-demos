@@ -11,9 +11,10 @@
 
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
 ARG WINDOWS_VERSION=2025
-# The image the final stage is built on. Defaults to Nano Server for WINDOWS_VERSION; CI pins it to a digest.
-# Set with --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64.
-ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+# The image the final stage is built on. Defaults to nanoserver-base for WINDOWS_VERSION, which has bsdtar, jq,
+# Microsoft Edit and the Visual C++ runtime (ADR 0016). CI pins it to a digest.
+# Set with --build-arg BASE_IMAGE=zippy1981/nanoserver-base:ltsc2022.
+ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
 
 # Helper stage. Nanoserver has no netapi32.dll, which sshd.exe, sshd-session.exe
 # and ssh.exe all import; without it they die with 0xC0000135

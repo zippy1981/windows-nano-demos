@@ -92,7 +92,7 @@ Describe 'New-NanoServerImage scaffold' {
 
         $dockerfile | Should -BeLike '*ARG WINDOWS_VERSION=2025*'
         $dockerfile | Should -BeLike '*# Docker Hub categories: developer-tools*'
-        $dockerfile | Should -BeLike '*ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64*'
+        $dockerfile | Should -BeLike '*ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}*'
         $dockerfile | Should -BeLike '*FROM ${BASE_IMAGE}*'
         $dockerfile | Should -BeLike '*RUN mkdir "%TOOL_DIR%"*'
         $dockerfile | Should -BeLike '*curl -fLo "C:\tool.zip" "https://example.com/tool.zip"*'

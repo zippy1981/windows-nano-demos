@@ -28,9 +28,21 @@ WINDOWS_VERSION_EXCEPTIONS: dict[str, list[str]] = {
     # ADR 0014: the artifact cache only runs on the ltsc2025 runner host
     "nano-server/nano-server-artifact-cache": ["2025"],
 }
+# ADR 0016: Nano Server images build on zippy1981/nanoserver-base (-pwsh when they run PowerShell), and Server Core
+# images on Microsoft's Server Core. The named group is the base's family, which picks the image's directory (ADR 0012).
 BASE_IMAGE_ARG = re.compile(
-    r"^ARG BASE_IMAGE=mcr\.microsoft\.com/windows/(nanoserver|servercore):ltsc\$\{WINDOWS_VERSION\}-amd64$"
+    r"^ARG BASE_IMAGE=(?:"
+    r"zippy1981/(?P<nano>nanoserver)-base:ltsc\$\{WINDOWS_VERSION\}(?:-pwsh)?"
+    r"|mcr\.microsoft\.com/windows/(?P<core>servercore):ltsc\$\{WINDOWS_VERSION\}-amd64"
+    r")$"
 )
+
+
+def base_family(match: re.Match[str]) -> str:
+    """nanoserver or servercore, for a BASE_IMAGE_ARG match."""
+    return match.group("nano") or match.group("core")
+
+
 # ADR 0009
 REUSABLE_WORKFLOW = "build-windows-image.yml"
 REUSABLE_WORKFLOW_REF = f"./.github/workflows/{REUSABLE_WORKFLOW}"

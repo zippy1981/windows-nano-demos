@@ -4,7 +4,7 @@ A Windows nano server container for writing and testing PowerShell. `pwsh` is th
 
 It contains:
 
-- PowerShell 7.6.9
+- PowerShell 7 from the base image, [`zippy1981/nanoserver-base`](https://github.com/zippy1981/windows-nano-baseimages/tree/main/images/nanoserver-base)'s `-pwsh` tag (ADR 0016). The smoke test requires 7.4 or later. The base also has bsdtar, `jq`, Microsoft Edit and the Visual C++ runtime.
 - MinGit 2.56.0.4 (in `C:\Program Files\MinGit`, with `cmd` on the path)
 - The micro text editor 2.0.15
 - These modules from the PowerShell Gallery, installed for all users in `C:\Program Files\PowerShell\Modules`:
@@ -55,7 +55,7 @@ build.cmd
 `WINDOWS_VERSION` can be 2019, 2022 or 2025. To build on a different base image, set `BASE_IMAGE` as well, for example:
 
 ```cmd
-set BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2025-amd64
+set BASE_IMAGE=zippy1981/nanoserver-base:ltsc2025-pwsh
 build.cmd
 ```
 

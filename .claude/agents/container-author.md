@@ -15,11 +15,13 @@ You write Dockerfiles. `windows-demo-scaffolder` creates whole new demo folders 
 
   ```dockerfile
   ARG WINDOWS_VERSION=2025
-  ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+  ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
   FROM ${BASE_IMAGE}
   ```
 
   A servercore build stage uses `mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64`. Redeclare `ARG WINDOWS_VERSION` after a `FROM` if a later stage needs it.
+
+  Use the `-pwsh` tag (`zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}-pwsh`) when the image runs PowerShell, and don't download PowerShell yourself. The base already has bsdtar, `jq`, Microsoft Edit, `curl` and the Visual C++ runtime (ADR 0016): don't add them again, and don't smoke-test them.
 - It must build for `2019`, `2022`, and `2025`. Don't use features that only one version has without a guard.
 - Nanoserver has no PowerShell, no MSI, and no .NET Framework. Use `cmd`, `curl.exe`, `tar.exe`, `reg.exe`, and `setx`. If a tool needs an installer, unpack it in a servercore stage and `COPY --from=` the result.
 - Pin every version in one `ENV` block near the top, and derive URLs and paths from it so a bump touches one line. Verify checksums where upstream publishes them.

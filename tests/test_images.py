@@ -37,7 +37,8 @@ class TestDockerfile:
         args = self._global_args(image_dir)
         assert any(BASE_IMAGE_ARG.match(a) for a in args), (
             f"{image_dir.name}/Dockerfile must declare "
-            "ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64 (or servercore) before its first FROM"
+            "ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION} (or -pwsh), or "
+            "mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64, before its first FROM (ADR 0016)"
         )
 
     def test_windows_version_is_declared_before_base_image(self, image_dir: Path) -> None:

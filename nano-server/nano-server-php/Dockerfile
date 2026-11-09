@@ -7,28 +7,14 @@
 
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
 ARG WINDOWS_VERSION=2025
-# The image the final stage is built on. Defaults to Nano Server for WINDOWS_VERSION; CI pins it to a digest.
-# Set with --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64.
-ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+# The image the final stage is built on. Defaults to nanoserver-base for WINDOWS_VERSION, which has bsdtar, jq,
+# Microsoft Edit and the Visual C++ runtime (ADR 0016). CI pins it to a digest.
+# Set with --build-arg BASE_IMAGE=zippy1981/nanoserver-base:ltsc2022.
+ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
 
-# PHP needs the Visual C++ runtime. Nanoserver doesn't ship it and can't run the installer.
-# Server Core doesn't ship it either, but it can run the official redistributable,
-# so install it in a throwaway Server Core stage and copy the DLLs out.
-FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION} AS vcrt
-SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop';"]
-RUN curl.exe -fsSLo C:\vc_redist.x64.exe https://aka.ms/vc14/vc_redist.x64.exe; \
-    $p = Start-Process C:\vc_redist.x64.exe -ArgumentList '/install', '/quiet', '/norestart' -Wait -PassThru; \
-    if ($p.ExitCode -notin 0, 3010) { throw ('vc_redist exited with ' + $p.ExitCode) }; \
-    Remove-Item C:\vc_redist.x64.exe
-
+# PHP needs the Visual C++ runtime (vcruntime140.dll for php.exe and every extension, vcruntime140_1.dll and
+# msvcp140.dll for the ICU DLLs and a few other extensions). The base image ships all three in System32.
 FROM ${BASE_IMAGE}
-
-# vcruntime140.dll is needed by php.exe and every extension.
-# vcruntime140_1.dll and msvcp140.dll are needed by the ICU DLLs (intl) and a few other extensions.
-COPY --from=vcrt ["C:/Windows/System32/vcruntime140.dll", "C:/Windows/System32/vcruntime140_1.dll", "C:/Windows/System32/msvcp140.dll", "C:/Windows/System32/"]
-# Nanoserver has no where.exe. Server Core's copy only needs DLLs nanoserver already has.
-COPY --from=vcrt ["C:/Windows/System32/where.exe", "C:/Windows/System32/"]
-COPY --from=vcrt ["C:/Windows/System32/en-US/where.exe.mui", "C:/Windows/System32/en-US/"]
 
 # Pinned versions
 ENV \

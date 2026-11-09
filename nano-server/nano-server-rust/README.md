@@ -43,10 +43,10 @@ build.cmd
 
 The same works for `2025`. CI builds and tests 2019, 2022 and 2025.
 
-The base image defaults to `mcr.microsoft.com/windows/nanoserver:ltsc<WINDOWS_VERSION>-amd64`. To use a different one, set `BASE_IMAGE` before running `build.cmd`. It is passed to `docker build` as `--build-arg BASE_IMAGE`.
+The base image defaults to `zippy1981/nanoserver-base:ltsc<WINDOWS_VERSION>` (ADR 0016). To use a different one, set `BASE_IMAGE` before running `build.cmd`. It is passed to `docker build` as `--build-arg BASE_IMAGE`.
 
 ```cmd
-set BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64
+set BASE_IMAGE=zippy1981/nanoserver-base:ltsc2022
 build.cmd
 ```
 

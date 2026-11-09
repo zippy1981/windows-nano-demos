@@ -2,12 +2,13 @@
 
 For every image (a workflow job that calls the shared build workflow) and every Windows version it compares:
 
-- the current digest of its Microsoft base image on MCR with the base digest label on the published Docker Hub image
+- the current digest of its base image (Microsoft's on MCR, or zippy1981/nanoserver-base on Docker Hub) with the base
+  digest label on the published Docker Hub image
 - the image folder's commits with the revision label on the published image
 
 It prints a JSON list with one entry per image that needs work, in the shape that image-refresh.yml feeds to
 build-windows-image.yml. The base image is pinned to the detected digest, so the build uses exactly what was detected
-even if MCR moves the tag mid-run (ADR 0004).
+even if the registry moves the tag mid-run (ADR 0004).
 
     uv run python scripts/refresh_matrix.py [--force] [--images nano-server/nano-server-php,nano-server/nano-server-go] [--github-output]
 """
@@ -53,8 +54,13 @@ INDEX_TYPES = {
     "application/vnd.oci.image.index.v1+json",
     "application/vnd.docker.distribution.manifest.list.v2+json",
 }
+# The base image's reference with ${WINDOWS_VERSION} in it: Microsoft's Nano Server or Server Core on MCR, or this
+# account's nanoserver-base (and its -pwsh variant) on Docker Hub (issue #71)
 BASE_IMAGE_ARG = re.compile(
-    r"^ARG BASE_IMAGE=mcr\.microsoft\.com/windows/(nanoserver|servercore):ltsc\$\{WINDOWS_VERSION\}-amd64\s*$",
+    r"^ARG BASE_IMAGE=(?P<reference>"
+    r"mcr\.microsoft\.com/windows/(?:nanoserver|servercore):ltsc\$\{WINDOWS_VERSION\}-amd64"
+    r"|zippy1981/nanoserver-base:ltsc\$\{WINDOWS_VERSION\}(?:-pwsh)?"
+    r")\s*$",
     re.MULTILINE,
 )
 TIMEOUT_SECONDS = 30
@@ -93,7 +99,7 @@ def http_fetch(url: str, headers: dict[str, str]) -> tuple[int, dict[str, str], 
 
 @dataclass(frozen=True)
 class BaseImage:
-    reference: str  # mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64
+    reference: str  # mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64 or zippy1981/nanoserver-base:ltsc2022
     digest: str
     os_version: str
 
@@ -242,18 +248,33 @@ class Registries:
         _, _, config = self._get_json(f"{registry}/v2/{repository}/blobs/{manifest['config']['digest']}", headers)
         return digest, config
 
+    def _hub_headers(self, repository: str) -> dict[str, str] | None:
+        """Request headers with an anonymous pull token for a Docker Hub repository, or None if there's no token."""
+        _, _, token = self._get_json(f"{HUB_AUTH}?service=registry.docker.io&scope=repository:{repository}:pull", {})
+        return None if token is None else {"Authorization": f"Bearer {token['token']}"}
+
     def base(self, reference: str) -> BaseImage:
+        """Microsoft's base images on MCR, or this account's base images (zippy1981/<repository>:<tag>) on Docker Hub."""
         if reference in self._bases:
             return self._bases[reference]
-        if not reference.startswith(MCR_PREFIX) or ":" not in reference:
-            raise RegistryError(f"only tagged MCR base images are supported, not {reference}")
-        repository, tag = reference.removeprefix(MCR_PREFIX).rsplit(":", 1)
-        found = self._config(MCR_REGISTRY, repository, tag, {})
+        if ":" not in reference or not reference.startswith((MCR_PREFIX, f"{DOCKER_HUB_NAMESPACE}/")):
+            raise RegistryError(
+                f"only tagged MCR or {DOCKER_HUB_NAMESPACE}/ Docker Hub base images are supported, not {reference}"
+            )
+        if reference.startswith(MCR_PREFIX):
+            registry_name = "MCR"
+            repository, tag = reference.removeprefix(MCR_PREFIX).rsplit(":", 1)
+            found = self._config(MCR_REGISTRY, repository, tag, {})
+        else:
+            registry_name = "Docker Hub"
+            repository, tag = reference.rsplit(":", 1)
+            headers = self._hub_headers(repository)
+            found = self._config(HUB_REGISTRY, repository, tag, headers, hub_not_published) if headers else None
         if found is None:
-            raise RegistryError(f"{reference} not found on MCR")
+            raise RegistryError(f"{reference} not found on {registry_name}")
         digest, config = found
         if not digest:
-            raise RegistryError(f"MCR returned no digest for {reference}")
+            raise RegistryError(f"{registry_name} returned no digest for {reference}")
         base = BaseImage(reference, digest, config.get("os.version", ""))
         self._bases[reference] = base
         return base
@@ -261,12 +282,10 @@ class Registries:
     def published_labels(self, image: str, tag: str) -> dict[str, str] | None:
         """Labels of zippy1981/<image>:<tag> on Docker Hub, or None if it hasn't been published."""
         repository = f"{DOCKER_HUB_NAMESPACE}/{image}"
-        _, _, token = self._get_json(f"{HUB_AUTH}?service=registry.docker.io&scope=repository:{repository}:pull", {})
-        if token is None:
+        headers = self._hub_headers(repository)
+        if headers is None:
             return None
-        found = self._config(
-            HUB_REGISTRY, repository, tag, {"Authorization": f"Bearer {token['token']}"}, hub_not_published
-        )
+        found = self._config(HUB_REGISTRY, repository, tag, headers, hub_not_published)
         if found is None:
             return None
         _, config = found
@@ -303,7 +322,7 @@ def discover_images(root: Path = REPO_ROOT) -> list[ImageSpec]:
                 # An image's workflow can narrow the versions it builds (ADR 0008 exceptions); never publish the others
                 versions = json.loads(inputs.get("windows-versions") or json.dumps(list(WINDOWS_VERSIONS)))
                 bases = {
-                    version: overrides.get(version, f"{MCR_PREFIX}windows/{match.group(1)}:ltsc{version}-amd64")
+                    version: overrides.get(version, match.group("reference").replace("${WINDOWS_VERSION}", version))
                     for version in WINDOWS_VERSIONS
                     if version in versions
                 }

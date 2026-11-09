@@ -7,16 +7,15 @@
 
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
 ARG WINDOWS_VERSION=2025
-# The image the final stage is built on. Defaults to Nano Server for WINDOWS_VERSION; CI pins it to a digest.
-# Set with --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64.
-ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+# The image the final stage is built on. Defaults to nanoserver-base's -pwsh tag for WINDOWS_VERSION: PowerShell 7,
+# bsdtar, jq, Microsoft Edit and the Visual C++ runtime (ADR 0016). CI pins it to a digest.
+# Set with --build-arg BASE_IMAGE=zippy1981/nanoserver-base:ltsc2022-pwsh.
+ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}-pwsh
 FROM ${BASE_IMAGE}
 
-# Pinned tool and module versions
+# Pinned tool and module versions. PowerShell 7 itself comes from the base image, in C:\Program Files\PowerShell\7 and
+# on the machine PATH, with telemetry off; smoke-test.ps1 checks that its version is new enough (issue #71).
 ENV \
-    POWERSHELL_VERSION=7.6.9 \
-    POWERSHELL_DIR="C:\\Program Files\\PowerShell\\7" \
-    POWERSHELL_TELEMETRY_OPTOUT=1 \
     MINGIT_VERSION=2.56.0.4 \
     MINGIT_TAG=v2.56.0.windows.4 \
     MINGIT_DIR="C:\\Program Files\\MinGit" \
@@ -31,12 +30,6 @@ ENV \
 # Any DLLs build.cmd staged from the host. Currently only the .gitignore placeholder.
 COPY system32\\* C:\\windows\\system32\\
 
-# PowerShell 7. The zip has no top level folder so extract it straight into its own directory.
-RUN mkdir "%POWERSHELL_DIR%" && \
-    curl -fL --retry 5 --retry-delay 5 -o PowerShell.zip https://github.com/PowerShell/PowerShell/releases/download/v%POWERSHELL_VERSION%/PowerShell-%POWERSHELL_VERSION%-win-x64.zip && \
-    tar -xf PowerShell.zip -C "%POWERSHELL_DIR%" && \
-    del PowerShell.zip
-
 # MinGit (non-busybox). Do NOT install it to "C:\Program Files\Git": MinGit's etc\gitconfig includes
 # "C:/Program Files/Git/etc/gitconfig", which would then include itself and git fails with
 # "exceeded maximum include depth".
@@ -50,11 +43,11 @@ RUN curl -fL --retry 5 --retry-delay 5 -o micro.zip https://github.com/zyedidia/
     tar -xf micro.zip -C "%ProgramFiles%" && \
     del micro.zip
 
-# Add what we installed to the path
-# The users path is empty at this point so we dont need to append
-# Set path. In nano 2019 we need to make the users environment key before we can add values to it. We dont need the call to reg.exe in 2022
+# Add what we installed to the user's path, which Windows appends after the machine path (where the base puts its
+# tools and PowerShell). The user's path is empty at this point, so there's nothing to append to.
+# In nano 2019 we need to make the users environment key before we can add values to it. We dont need the call to reg.exe in 2022
 RUN reg query HKCU\Environment 2> NUL || reg add HKCU\Environment /v PATH
-RUN setx PATH "%POWERSHELL_DIR%;%MINGIT_DIR%\cmd;%MICROEDITOR_PATH%"
+RUN setx PATH "%MINGIT_DIR%\cmd;%MICROEDITOR_PATH%"
 
 # Dev modules are installed for all users into C:\Program Files\PowerShell\Modules (the AllUsers
 # scope, ahead of $PSHOME\Modules on PSModulePath).

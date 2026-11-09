@@ -12,9 +12,10 @@
 
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
 ARG WINDOWS_VERSION=2025
-# The image the final stage is built on. Defaults to Nano Server for WINDOWS_VERSION; CI pins it to a digest.
-# Set with --build-arg BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc2022-amd64.
-ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64
+# The image the check and final stages are built on. Defaults to nanoserver-base for WINDOWS_VERSION: bsdtar, jq,
+# Microsoft Edit and the Visual C++ runtime (ADR 0017). CI pins it to a digest.
+# Set with --build-arg BASE_IMAGE=zippy1981/nanoserver-base:ltsc2022.
+ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
 # The image that downloads and unpacks Wine, for every WINDOWS_VERSION. It must be ltsc2025 or newer: WineHQ's .deb
 # holds a zstd-compressed tar, and only ltsc2025's tar.exe reads zstd. The PE files it extracts are the same for every
 # Windows version. Set with --build-arg FETCH_IMAGE=mcr.microsoft.com/windows/servercore:ltsc2025-amd64.

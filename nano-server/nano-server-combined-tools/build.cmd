@@ -1,7 +1,7 @@
 @echo off
 setlocal
 rem WINDOWS_VERSION picks the LTSC base: 2019, 2022 or 2025 (default).
-rem BASE_IMAGE optionally overrides the nanoserver base image entirely.
+rem BASE_IMAGE optionally overrides the base image (zippy1981/nanoserver-base) entirely.
 rem Which implementation each tool uses is set in tool-sources.txt, not here.
 rem The Dockerfile downloads Wine and ReactOS and selects the tools itself, in Server Core stages.
 if not defined WINDOWS_VERSION set "WINDOWS_VERSION=2025"

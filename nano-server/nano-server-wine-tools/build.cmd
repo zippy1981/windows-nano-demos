@@ -1,7 +1,7 @@
 @echo off
 setlocal
 rem WINDOWS_VERSION picks the LTSC base: 2019, 2022 or 2025 (default).
-rem BASE_IMAGE optionally overrides the nanoserver base image entirely.
+rem BASE_IMAGE optionally overrides the base image (zippy1981/nanoserver-base) entirely.
 rem The Dockerfile downloads the Wine programs and their source tarball itself, in a Server Core ltsc2025 stage.
 if not defined WINDOWS_VERSION set "WINDOWS_VERSION=2025"
 set "BUILD_ARGS=--build-arg WINDOWS_VERSION=%WINDOWS_VERSION%"

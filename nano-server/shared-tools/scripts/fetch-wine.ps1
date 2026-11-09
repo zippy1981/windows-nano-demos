@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Extracts the Wine x86_64 PE programs listed in wine-tools.txt into wine-pe\ for a local build.
+    Extracts the Wine x86_64 PE programs listed in -ToolsFile into wine-pe\ for a local build.
 
 .DESCRIPTION
     The Windows equivalent of extract-wine.sh (option B in plans/wine-binaries.md). Downloads the
@@ -12,6 +12,7 @@
 #>
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory)] [string] $ToolsFile,
     [string] $OutDir = (Join-Path $PSScriptRoot 'wine-pe')
 )
 
@@ -24,7 +25,7 @@ $peDir = './opt/wine-stable/lib/wine/x86_64-windows'
 $unixDir = './opt/wine-stable/lib/wine/x86_64-unix'
 $deny = 'ntdll', 'win32u', 'kernel32', 'kernelbase', 'user32', 'gdi32', 'advapi32', 'ws2_32', 'msvcrt', 'ucrtbase', 'combase', 'ole32', 'rpcrt4', 'sechost'
 
-$tools = Get-Content (Join-Path $PSScriptRoot 'wine-tools.txt') | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') }
+$tools = Get-Content -LiteralPath $ToolsFile |ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') }
 foreach ($t in $tools) {
     if ($t -match '[\\/]') { throw "refusing ${t}: not a plain file name" }
     if ([IO.Path]::GetFileNameWithoutExtension($t).ToLowerInvariant() -in $deny) { throw "refusing ${t}: Wine core module" }

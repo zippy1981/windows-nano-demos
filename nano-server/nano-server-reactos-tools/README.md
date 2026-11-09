@@ -11,11 +11,11 @@ build.cmd
 set WINDOWS_VERSION=2022 && build.cmd
 ```
 
-`WINDOWS_VERSION` is `2019`, `2022` or `2025` (the default). The ReactOS programs are not in git. The Dockerfile's fetch stage runs `scripts/Fetch-Reactos.ps1` on Server Core, which downloads the pinned boot CD, checks its SHA-256, extracts only the files in `tools.txt`, builds the shim, and patches the tools.
+`WINDOWS_VERSION` is `2019`, `2022` or `2025` (the default). The ReactOS programs are not in git. The Dockerfile's fetch stage runs `shared-tools/scripts/Fetch-Reactos.ps1` on Server Core, which downloads the pinned boot CD, checks its SHA-256, extracts only the files in `tools.txt`, builds the shim, and patches the tools.
 
 ## The shim
 
-ReactOS x64 MSVC binaries import `__chkstk` from `kernel32.dll`. Microsoft's x64 `kernel32.dll` does not export it, so the tools fail to load with `0xC0000139`. The image builds `rosk32sh.dll`: every `kernel32` name the tools import becomes a forwarder to the real `kernel32`, and `__chkstk` is implemented in `shim/chkstk.S`. Each tool's `kernel32.dll` import is rewritten in place to `rosk32sh.dll` by `scripts/Set-PeImportName.ps1`. No ReactOS core DLL is copied into the image.
+ReactOS x64 MSVC binaries import `__chkstk` from `kernel32.dll`. Microsoft's x64 `kernel32.dll` does not export it, so the tools fail to load with `0xC0000139`. The image builds `rosk32sh.dll`: every `kernel32` name the tools import becomes a forwarder to the real `kernel32`, and `__chkstk` is implemented in `shared-tools/shim/chkstk.S`. Each tool's `kernel32.dll` import is rewritten in place to `rosk32sh.dll` by `shared-tools/scripts/Set-PeImportName.ps1`. No ReactOS core DLL is copied into the image.
 
 The builder uses llvm-mingw, not the prototype's Rust toolchain. The generated export table is the same either way: the local verification for this change cross-built the shim on Linux and checked that `__chkstk` is a local export and the other names are forwarders. Only the Windows CI runners can prove the patched tools actually run.
 
@@ -25,7 +25,7 @@ ReactOS is mostly GPL-2.0-or-later, with some LGPL-2.1-or-later files from Wine.
 
 ## Use
 
-The tools are in `C:\Program Files\reactos-tools`, appended to the user `PATH` after the system `PATH`, so nothing nanoserver ships is shadowed.
+The tools are in `C:\tools\reactos`, appended to the user `PATH` after the system `PATH`, so nothing nanoserver ships is shadowed.
 
 ```cmd
 docker run --rm windows-nano-reactos-tools:2025 "whoami & where cmd & tasklist"

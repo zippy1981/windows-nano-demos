@@ -208,9 +208,11 @@ class TestReusableWorkflow:
         builds = [s["run"] for s in reusable_job["steps"] if "docker build" in s.get("run", "")]
         assert builds, "no docker build step"
         assert all("--memory" in b for b in builds), "docker build needs --memory; Hyper-V's 1 GB default hangs builds"
-        # The image build is the step that builds the image folder; the publish step's label build is FROM the tested image
+        # The image build is the step that passes the matrix's build arguments; the publish step's label build is FROM the tested image
         image_builds = [
-            s["run"] for s in reusable_job["steps"] if s.get("working-directory") == "${{ inputs.context }}"
+            s["run"]
+            for s in reusable_job["steps"]
+            if "docker build" in s.get("run", "") and "@buildArgs" in s.get("run", "")
         ]
         assert image_builds and all("WINDOWS_VERSION=${{ matrix.windows-version }}" in b for b in image_builds)
 

@@ -1,5 +1,5 @@
 # ReactOS x64 PE programs copied into the image, one file name per line.
-# Read by scripts/Fetch-Reactos.ps1 in the Dockerfile's fetch stage.
+# Read by shared-tools/scripts/Fetch-Reactos.ps1 in the Dockerfile's fetch stage.
 # Only tools nanoserver lacks and that ran in the ltsc2022 prototype with the shim.
 # Never ReactOS core DLLs, never cmd.exe, never a GUI program.
 find.exe

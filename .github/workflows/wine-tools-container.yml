@@ -10,12 +10,16 @@ on:
       - 'nano-server/nano-server-wine-tools/**'
       - '.github/workflows/wine-tools-container.yml'
       - '.github/workflows/build-windows-image.yml'
+      - 'nano-server/shared-tools/**'
+      - 'nano-server/.dockerignore'
   pull_request:
     branches: [main]
     paths:
       - 'nano-server/nano-server-wine-tools/**'
       - '.github/workflows/wine-tools-container.yml'
       - '.github/workflows/build-windows-image.yml'
+      - 'nano-server/shared-tools/**'
+      - 'nano-server/.dockerignore'
   workflow_dispatch:
 
 permissions:
@@ -31,6 +35,7 @@ jobs:
     uses: ./.github/workflows/build-windows-image.yml
     with:
       context: nano-server/nano-server-wine-tools
+      build-context: nano-server
       image: windows-nano-wine-tools
 
   extract-wine:

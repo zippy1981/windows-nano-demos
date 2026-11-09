@@ -7,9 +7,13 @@ on:
   workflow_call:
     inputs:
       context:
-        description: Image folder, which is the docker build context and holds smoke-test.ps1
+        description: Image folder, which holds the Dockerfile and smoke-test.ps1, and is the build context unless build-context is set
         type: string
         required: true
+      build-context:
+        description: Docker build context, for an image whose Dockerfile copies files from outside its folder. Defaults to context.
+        type: string
+        default: ''
       image:
         description: Image name, for example windows-nano-php. Published as zippy1981/<image>.
         type: string
@@ -80,7 +84,6 @@ jobs:
         run: ./scripts/Publish-DockerHubDocs.ps1 -Context '${{ inputs.context }}' -Repository 'zippy1981/${{ inputs.image }}' -WhatIf
 
       - name: Build (ltsc${{ matrix.windows-version }})
-        working-directory: ${{ inputs.context }}
         run: |
           $buildArgs = @('--build-arg', 'WINDOWS_VERSION=${{ matrix.windows-version }}')
           if ($env:BASE_IMAGE) { $buildArgs += @('--build-arg', "BASE_IMAGE=$env:BASE_IMAGE") }
@@ -91,7 +94,8 @@ jobs:
           # No per-run labels here. They would change the image ID on every run and break layer caching for anything built
           # FROM this image, such as the smoke tests' derived images. The publish step adds the labels.
           # Hyper-V isolated builds default to 1 GB of memory, which hangs large extractions
-          docker build --memory 4g @buildArgs -t $env:IMAGE .
+          $buildContext = if ('${{ inputs.build-context }}') { '${{ inputs.build-context }}' } else { '${{ inputs.context }}' }
+          docker build --memory 4g @buildArgs -f '${{ inputs.context }}/Dockerfile' -t $env:IMAGE $buildContext
           if ($LASTEXITCODE) { throw "docker build failed: $LASTEXITCODE" }
 
       - name: Smoke test

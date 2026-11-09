@@ -31,6 +31,7 @@ This file is the Muse Code counterpart to [CLAUDE.md](CLAUDE.md), which serves t
 
 - **Dockerfiles** start with `ARG WINDOWS_VERSION=2025` and `ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:ltsc${WINDOWS_VERSION}-amd64`, and the last stage is `FROM ${BASE_IMAGE}`. Get DLLs from a servercore build stage, never from the host.
 - **Builds:** `docker build --memory 4g`, because Hyper-V's 1 GB default hangs builds.
+- **Never pipe a download into `tar`** (`curl ... | tar -xf -`). On Windows, libarchive silently drops the first ~64 KB of a zip read from a pipe and exits 0 ([windows-nano-baseimages#8](https://github.com/zippy1981/windows-nano-baseimages/issues/8)). Download to a file, then `tar -xf <file>`. `tests/test_no_tar_from_pipe.py` enforces it in every Dockerfile, script and workflow.
 - **Workflows:** each image has a small workflow that calls `.github/workflows/build-windows-image.yml`, plus a `<folder>/smoke-test.ps1 -Image <tag>`. Variants use matrix `include` entries with `tag-prefix` (ADR 0005). Only `image-refresh.yml` publishes, and only from `main`.
 - **Self-hosted runners** (`[self-hosted, windows, docker]`) are nanoserver containers on the host's Docker pipe. Jobs need the fork guard and a timeout. Never bind-mount the workspace into job containers; use `docker cp`.
 - `tests/` enforces all of this. Run it after touching workflows, Dockerfiles or `build.cmd`.

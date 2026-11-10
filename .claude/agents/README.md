@@ -6,7 +6,7 @@ This folder holds the [Claude Code subagents](https://docs.claude.com/en/docs/cl
 
 | Agent | Purpose | Model | Tools |
 | --- | --- | --- | --- |
-| `planning` | Writes plans in `plans/` and names the agent that owns each step. Writes only under `plans/`. | haiku | Read, Glob, Grep, Write, Edit, Agent |
+| `planning` | Writes plans in `plans/` and names the agent that owns each step. Writes only under `plans/`. | sonnet | Read, Glob, Grep, Write, Edit, Agent |
 | `adr` | Writes MADR-style decision records in `docs/adr/` and keeps the index. Writes only under `docs/adr/`. | sonnet | Read, Glob, Grep, Write, Edit |
 | `governance` | Read-only audit of agents, images, workflows, plans, ADRs, and docs. Returns a ranked gap report. | opus | Read, Glob, Grep |
 | `cicd-engineer` | Designs the CI/CD system: runner fleet and image, matrices, schedules, publishing, cleanup, secrets. | opus | Read, Glob, Grep, Write, Edit, Bash, PowerShell, WebFetch |
@@ -16,8 +16,8 @@ This folder holds the [Claude Code subagents](https://docs.claude.com/en/docs/cl
 | `powershell-author` | Writes PowerShell 7 scripts and modules with Pester tests, clean under PSScriptAnalyzer. | sonnet | Read, Glob, Grep, Write, Edit, PowerShell |
 | `python-author` | Writes Python tools and the convention tests under `tests/` with uv (Python version from `UV_PYTHON`), PyYAML and pytest. Hands formatting to `python-fixer`. | sonnet | Read, Glob, Grep, Write, Edit, Bash, Agent |
 | `python-fixer` | Runs ruff format and ruff check --fix, fixes what's left by hand without changing behaviour, then re-runs the tests. | haiku | Bash, Read, Edit, Glob, Grep |
-| `windows-container-builder` | Builds and tags images for ltsc2019, ltsc2022, and ltsc2025. | sonnet | PowerShell, Read, Glob, Grep |
-| `windows-container-tester` | Smoke-tests built images by running their tools. | sonnet | PowerShell, Read, Glob, Grep |
+| `windows-container-builder` | Builds and tags images for ltsc2019, ltsc2022, and ltsc2025. | haiku | PowerShell, Read, Glob, Grep |
+| `windows-container-tester` | Smoke-tests built images with their `smoke-test.ps1`. | haiku | PowerShell, Read, Glob, Grep |
 | `windows-deps-updater` | Finds and applies newer tool versions pinned in Dockerfiles. | sonnet | Read, Edit, Glob, Grep, Bash, WebFetch, Agent |
 | `windows-dockerfile-reviewer` | Read-only review of Dockerfiles and build scripts for nanoserver pitfalls. | opus | Read, Glob, Grep |
 | `windows-host-doctor` | Diagnoses the host's container setup when builds fail for environmental reasons. | haiku | PowerShell, Read, Glob, Grep |
@@ -30,8 +30,8 @@ This folder holds the [Claude Code subagents](https://docs.claude.com/en/docs/cl
 
 Model choice is the biggest lever on cost. Most tokens in this repo go on waiting for and reading CI, not on writing code, so that work goes to haiku.
 
-- **haiku** for cheap, mechanical, or read-mostly work with a fixed procedure: watching CI (`ci-watcher`), running lint or ruff and fixing what it says, host diagnostics, a guarded `docker push`, and `planning`. Planning is haiku because it fills in a fixed template and hands real work to other agents. If its plans come out thin for a large design, ask `cicd-engineer` to draft the design and have `planning` turn it into a checklist.
-- **sonnet** for authoring and building: writing Dockerfiles, workflows, scripts, ADRs, and running builds and tests, where correctness matters but each task is bounded.
+- **haiku** for cheap, mechanical, or read-mostly work with a fixed procedure: watching CI (`ci-watcher`), running lint or ruff and fixing what it says, host diagnostics, a guarded `docker push`, and building and smoke-testing images. A build is a fixed `docker build` command followed by a long wait, and a smoke test is the folder's `smoke-test.ps1`, so a bigger model only costs more while it waits.
+- **sonnet** for authoring and planning: writing Dockerfiles, workflows, scripts, ADRs and plans, where correctness matters but each task is bounded. `planning` is sonnet because a plan's decisions, risks and owners steer every agent after it, and a thin plan costs more in rework than it saves. For a large design, have `cicd-engineer` draft it and `planning` turn it into a checklist.
 - **opus** for deep review and design, where missing something is expensive: `governance` (cross-cutting audit), `windows-dockerfile-reviewer` (subtle nanoserver failures), and `cicd-engineer` (security of self-hosted runners and the shape of the whole pipeline).
 
 ## How tools were chosen
@@ -40,6 +40,24 @@ Model choice is the biggest lever on cost. Most tokens in this repo go on waitin
 - The fixers (`markdown-fixer`, `python-fixer`) are haiku with Edit and Bash. They run the formatter or linter and make mechanical fixes, and never change behaviour.
 - Agents that drive docker on Windows get PowerShell only, not both shells.
 - `planning` and `adr` can write, but their prompts restrict them to `plans/` and `docs/adr/`. That is enforced by the prompt, not by Claude Code, so `governance` checks it.
+
+## Skills the agents use
+
+A fixed procedure belongs in a skill backed by a script, which prints only the answer. Then an agent, or the main session without starting one, doesn't spend tokens re-deriving it by reading files, logs or release indexes. The skills are in `.claude/skills/`. `tests/test_governance.py` checks that every skill an agent names exists.
+
+| Skill | Script | Used by |
+| --- | --- | --- |
+| `local-image-check` | `scripts/local_image_check.py` | `windows-container-builder`, `windows-container-tester`, `cicd-engineer`, `windows-deps-updater` |
+| `version-check` | `scripts/check_versions.py` | `windows-deps-updater` |
+| `container-host-check` | `scripts/Test-ContainerHost.ps1` | `windows-host-doctor` |
+| `actionlint` | `scripts/actionlint.py` | `workflow-author`, `cicd-engineer` |
+| `governance-scan` | `uv run pytest` and the two above | the caller, before starting `governance` |
+| `ci-triage`, `repo-status`, `codecov`, `coverage-gaps` | `scripts/ci_triage.py`, `scripts/repo_status.py`, `scripts/coverage_gaps.py` | `ci-watcher`, `workflow-author`, `cicd-engineer`, `python-author` |
+| `docker-hub` | — | `windows-image-publisher` |
+| `image-scaffolder` | `scripts/New-NanoServerImage.ps1` | `windows-demo-scaffolder`, named in plans by `planning` |
+| `markdown-lint`, `dockerfile-docs` | — | `markdown-reviewer`, `markdown-fixer`, and the rules `planning` and `adr` write to |
+| `safe-docker-cleanup` | `scripts/Remove-DockerArtifacts.ps1` | `windows-container-builder`, `local-image-check` |
+| `pr-shepherd` | `scripts/union_merge.py` | any agent asked to rebase, retarget a stack or merge |
 
 ## Container work: who does what
 

@@ -1,5 +1,5 @@
 ---
-description: "Smoke-tests built Windows container images in this repo by running the tools inside them (php, node, npm, composer, laravel, vite, micro). Use after a build or when asked whether an image works."
+description: "Smoke-tests built Windows container images in this repo by running each image's smoke-test.ps1, plus extra tool checks when asked. Use after a build or when asked whether an image works."
 mode: subagent
 permission:
   read: allow

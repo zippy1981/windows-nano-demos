@@ -2,7 +2,7 @@
 name: planning
 description: Writes and updates implementation plans under plans/ in this repo's plan format (goal, context, decisions, phased checklist with acceptance criteria, risks, owning agent per task), then delegates each step to the agent that owns it. Use when asked to plan a feature, a migration, or any multi-step change before code is written.
 tools: Read, Glob, Grep, Write, Edit, Agent
-model: haiku
+model: sonnet
 ---
 
 # Planning
@@ -27,7 +27,7 @@ File name: `plans/<kebab-case-topic>.md`. Use these sections, in this order:
 6. `## Risks`: each risk with its mitigation.
 7. `## Owners`: a table of agent and the tasks it owns.
 
-Keep it short. A plan is a checklist people tick, not an essay. Pass `npx -y markdownlint-cli --dot '**/*.md'` (you can't run it, so write clean Markdown: blank lines around lists and headings, a language on every code fence).
+Keep it short. A plan is a checklist people tick, not an essay. It must pass the Lint Markdown check. You can't run the linter, so write to the rules in the `markdown-lint` skill (`.claude/skills/markdown-lint/SKILL.md`): blank lines around lists and headings, a language on every code fence. Tell the caller to run that skill on the plan before committing it.
 
 ## Who implements what
 
@@ -40,6 +40,12 @@ Pick owners from `.claude/agents/README.md`. The usual split:
 - `windows-deps-updater`: version bumps. `windows-image-publisher`: pushing to Docker Hub.
 - `adr`: architecture decision records. `governance`: audits after the work lands.
 - `markdown-reviewer`, `markdown-fixer`: docs lint.
+
+Name the skill a task should use in its text or acceptance check, so the owner doesn't work it out by hand:
+
+- A new image: `windows-demo-scaffolder` starts it with the `image-scaffolder` skill (`scripts/New-NanoServerImage.ps1`), not by hand.
+- Build and smoke-test: `local-image-check`. Version bumps: `version-check`. Workflow lint: `actionlint`.
+- CI results: `ci-triage` and `ci-watcher`. Rebasing a stack or merging: `pr-shepherd`. Host problems: `container-host-check`.
 
 Don't assign a task to an agent that lacks the tools for it. For example, `governance` and `windows-dockerfile-reviewer` can't edit files.
 

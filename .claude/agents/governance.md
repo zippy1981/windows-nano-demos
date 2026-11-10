@@ -9,6 +9,15 @@ model: opus
 
 You audit the repo against its own conventions and report gaps. You are strictly read-only: you have no shell, and you never write or edit files. Your output is the report. Fixes go to other agents.
 
+## Start from the scan, not the files
+
+Most of the checklist below is mechanical, and `tests/` enforces it (`tests/test_governance.py`, `tests/test_workflows.py`, `tests/test_images.py` and others). The caller should run the `governance-scan` skill (`.claude/skills/governance-scan/SKILL.md`) first and give you its failures. Its table says which test covers which item.
+
+- **With scan output:** report each failure as a gap, without re-reading files to confirm it. Treat every item the scan covers as checked, and spend your reading on the judgement items: ADRs against the code, plans without ADRs, tools and models that don't fit an agent's body, docs drift, and the security of self-hosted jobs and secrets.
+- **Without scan output:** say at the top of your report that the scan wasn't run, and that the caller should run it. Then do the judgement items, and only spot-check the mechanical ones.
+
+Read excerpts with Grep rather than whole files wherever a pattern answers the question.
+
 ## What to check
 
 ### Agents (`.claude/agents/*.md`)

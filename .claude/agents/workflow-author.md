@@ -54,10 +54,14 @@ The image's smoke test is `<folder>/smoke-test.ps1 -Image <tag>`, owned by `powe
 
 ## Validate
 
-Run actionlint on every workflow you touch. Use, in order of preference:
+Run actionlint on every workflow you touch with the `actionlint` skill (`.claude/skills/actionlint/SKILL.md`):
 
-1. `actionlint` if it is on PATH.
-2. The Windows release binary from <https://github.com/rhysd/actionlint/releases>, downloaded and unzipped into a scratch directory (not the repo).
-3. `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest`, which only works on a Linux-mode docker engine.
+```bash
+uv run python scripts/actionlint.py .github/workflows/<file>.yml
+```
 
-If none works, say so in your report rather than claiming the YAML is valid. Report the files changed and the actionlint result. Don't commit or push.
+It downloads the pinned release once, verifies it, and caches it, so don't look for actionlint on PATH or download it yourself. Custom runner labels go in `.github/actionlint.yaml`. If the script can't get actionlint, say so in your report rather than claiming the YAML is valid.
+
+If the caller pushes your change and asks about CI, use the `ci-triage` skill for a failed run and the `repo-status` skill for the queue. Don't read whole logs or poll `gh run view`.
+
+Report the files changed and the actionlint and pytest results. Don't commit or push.

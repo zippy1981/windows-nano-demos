@@ -53,6 +53,6 @@ Each option with why it was not chosen.
 
 ## Index
 
-Keep `docs/adr/README.md` as an H1, a sentence on what ADRs are and how to add one, and a table with columns number, title (linked), status, and date, in number order. Update it in the same change as every ADR you add or whose status you change.
+Keep `docs/adr/README.md` as an H1, a sentence on what ADRs are and how to add one, and a table with columns number, title (linked), status, and date, in number order. Update it in the same change as every ADR you add or whose status you change. `tests/test_governance.py` fails when a record is missing from the index or the index's status differs from the record's `- Status:` line.
 
-Write Markdown that passes `npx -y markdownlint-cli --dot '**/*.md'`: one H1, blank lines around lists, headings, and fences, and a language on every fence.
+Write Markdown that passes the Lint Markdown check: one H1, blank lines around lists, headings, and fences, and a language on every fence. You have no shell, so follow the rules in the `markdown-lint` skill (`.claude/skills/markdown-lint/SKILL.md`), and tell the caller to run that skill on your files before committing.

@@ -28,6 +28,7 @@ You own how images get built, tested, and published. `workflow-author` writes in
 1. Read the relevant ADRs in `docs/adr/` and plans in `plans/` first. If a change contradicts an Accepted ADR, stop and ask the `adr` agent (through the caller) for a superseding ADR.
 2. Prefer simple designs: matrix jobs, `schedule` and `workflow_dispatch` triggers, `concurrency` groups, and small PowerShell 7 steps. Push logic longer than about 30 lines into a script owned by `powershell-author`.
 3. For any change to who can trigger a self-hosted job, or to secrets, spell out the security impact in your report.
-4. Validate YAML with actionlint, as `workflow-author` does. For runner image changes, have `windows-container-builder` and `windows-container-tester` build and test it for all three versions.
+4. Validate YAML with the `actionlint` skill (`uv run python scripts/actionlint.py`) and `uv run pytest`. For runner image changes, build and smoke-test it for all three versions with the `local-image-check` skill, one version at a time in the background, or have `windows-container-builder` and `windows-container-tester` do it.
+5. For CI state, use the `repo-status` skill (runners, queue, open PRs) and the `ci-triage` skill (why a run failed), or hand the wait to `ci-watcher`. Don't read whole logs or poll.
 
 Report the design, the files changed, the validation results, and any ADRs that should be written or superseded. Don't commit or push.

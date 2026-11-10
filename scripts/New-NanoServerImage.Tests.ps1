@@ -11,6 +11,7 @@ Invoke-Pester -Path ./scripts/New-NanoServerImage.Tests.ps1
 param()
 
 BeforeAll {
+    $script:repoRoot = Split-Path -Parent $PSScriptRoot
     $script:generator = Join-Path $PSScriptRoot 'New-NanoServerImage.ps1'
 
     function Invoke-Generator {
@@ -318,5 +319,113 @@ Describe 'New-NanoServerImage existing image patterns' {
         $dockerfile = Get-GeneratedText -Name $Name -File Dockerfile
         $dockerfile | Should -BeLike "*ARG $Variable=$Version*"
         $dockerfile | Should -BeLike "*$($Url.Replace($Version, "%$Variable%"))*"
+    }
+
+    It 'scaffolds the <Label> download used by the <Image> image' -TestCases @(
+        @{
+            Label = 'Go toolchain'
+            Image = 'go'
+            Name = 'go-toolchain'
+            Url = 'https://go.dev/dl/go%GO_VERSION%.windows-amd64.zip'
+            Archive = 'go%GO_VERSION%.windows-amd64.zip'
+        }
+        @{
+            Label = 'MinGit for Go'
+            Image = 'go'
+            Name = 'mingit-go'
+            Url = 'https://github.com/git-for-windows/git/releases/download/v%MINGIT_RELEASE%/MinGit-%MINGIT_BUILD%-64-bit.zip'
+            Archive = 'MinGit-%MINGIT_BUILD%-64-bit.zip'
+        }
+        @{
+            Label = 'micro editor for Go'
+            Image = 'go'
+            Name = 'micro-go'
+            Url = 'https://github.com/micro-editor/micro/releases/download/v%MICROEDITOR_VERSION%/micro-%MICROEDITOR_VERSION%-win64.zip'
+            Archive = 'micro-%MICROEDITOR_VERSION%-win64.zip'
+        }
+        @{
+            Label = 'llvm-mingw for Go'
+            Image = 'go'
+            Name = 'llvm-mingw'
+            Url = 'https://github.com/mstorsjo/llvm-mingw/releases/download/%LLVM_MINGW_VERSION%/llvm-mingw-%LLVM_MINGW_VERSION%-ucrt-x86_64.zip'
+            Archive = 'llvm-mingw-%LLVM_MINGW_VERSION%-ucrt-x86_64.zip'
+        }
+        @{
+            Label = 'Node.js for PHP'
+            Image = 'php'
+            Name = 'node-php'
+            Url = 'https://nodejs.org/dist/v%NODE_VERSION%/node-v%NODE_VERSION%-win-x64.zip'
+            Archive = 'node-v%NODE_VERSION%-win-x64.zip'
+        }
+        @{
+            Label = 'PHP'
+            Image = 'php'
+            Name = 'php'
+            Url = 'https://windows.php.net/downloads/releases/archives/php-%PHP_VERSION%-nts-Win32-vs%PHP_VS_VERSION%-x64.zip'
+            Archive = 'php-%PHP_VERSION%-nts-Win32-vs%PHP_VS_VERSION%-x64.zip'
+        }
+        @{
+            Label = 'MinGit for Rust'
+            Image = 'rust'
+            Name = 'mingit-rust'
+            Url = 'https://github.com/git-for-windows/git/releases/download/%MINGIT_TAG%/MinGit-%MINGIT_VERSION%-64-bit.zip'
+            Archive = 'MinGit-%MINGIT_VERSION%-64-bit.zip'
+        }
+        @{
+            Label = 'Win32-OpenSSH'
+            Image = 'ssh'
+            Name = 'openssh'
+            Url = 'https://github.com/PowerShell/Win32-OpenSSH/releases/download/%OPENSSH_VERSION%/OpenSSH-Win64.zip'
+            Archive = 'OpenSSH-Win64.zip'
+        }
+        @{
+            Label = 'MySQL'
+            Image = 'mysql'
+            Name = 'mysql'
+            Url = 'https://cdn.mysql.com/Downloads/MySQL-8.4/mysql-%MYSQL_VERSION%-winx64.zip'
+            Archive = 'mysql-%MYSQL_VERSION%-winx64.zip'
+        }
+        @{
+            Label = 'Docker CLI'
+            Image = 'gh-runner'
+            Name = 'docker-cli'
+            Url = 'https://download.docker.com/win/static/stable/x86_64/docker-%DOCKER_VERSION%.zip'
+            Archive = 'docker-%DOCKER_VERSION%.zip'
+        }
+        @{
+            Label = 'GitHub Actions runner'
+            Image = 'gh-runner'
+            Name = 'actions-runner'
+            Url = 'https://github.com/actions/runner/releases/download/v%RUNNER_VERSION%/actions-runner-win-x64-%RUNNER_VERSION%.zip'
+            Archive = 'actions-runner-win-x64-%RUNNER_VERSION%.zip'
+        }
+        @{
+            Label = 'busybox MinGit for the runner'
+            Image = 'gh-runner'
+            Name = 'mingit-busybox'
+            Url = 'https://github.com/git-for-windows/git/releases/download/%MINGIT_TAG%/MinGit-%MINGIT_VERSION%-busybox-64-bit.zip'
+            Archive = 'MinGit-%MINGIT_VERSION%-busybox-64-bit.zip'
+        }
+        @{
+            Label = 'FAR'
+            Image = 'server-core-far'
+            Dockerfile = 'server-core/server-core-far/Dockerfile'
+            Name = 'far'
+            Url = 'https://www.farmanager.com/files/Far30b%FAR_BUILD%.x64.%FAR_DATE%.7z'
+            Archive = 'Far30b%FAR_BUILD%.x64.%FAR_DATE%.7z'
+            ExtractionTool = '7z.exe'
+        }
+    ) {
+        $relativeDockerfile = if ($Dockerfile) { $Dockerfile } else { "nano-server/nano-server-$Image/Dockerfile" }
+        $dockerfilePath = Join-Path $script:repoRoot $relativeDockerfile
+        [System.IO.File]::ReadAllText($dockerfilePath) | Should -BeLike "*$Url*"
+
+        $parameters = @{ Name = $Name; Url = $Url; RepositoryRoot = $script:root }
+        if ($ExtractionTool) { $parameters.ExtractionTool = $ExtractionTool }
+        $null = Invoke-Generator -Parameters $parameters
+
+        $download = 'curl -fLo "C:\' + $Archive + '" "' + $Url + '"'
+        Get-GeneratedText -Name $Name -File Dockerfile | Should -BeLike "*$download*"
+        Get-GeneratedText -Name $Name -File README.md | Should -BeLike "*$Url*"
     }
 }

@@ -58,7 +58,7 @@ SOURCES: dict[str, tuple[str, str, str]] = {
     "RUSTUP_VERSION": ("rustup", "", ""),
     "RUST_VERSION": ("github", "rust-lang/rust", ""),
     "OPENSSH_VERSION": ("github", "PowerShell/Win32-OpenSSH", ""),
-    "FAR_VERSION": ("github", "FarGroup/FarManager", "also update FAR_BUILD and FAR_DATE from farmanager.com"),
+    "FAR_VERSION": ("far", "", "stable build; set FAR_BUILD and FAR_DATE as shown"),
 }
 
 Fetch = Callable[[str, dict[str, str]], bytes]
@@ -177,6 +177,14 @@ def latest(kind: str, argument: str, current: str, fetch: Fetch) -> tuple[str, s
         url, pattern = argument.split("|")
         found = re.findall(pattern, fetch(url, {}).decode("utf-8"))
         return max(found, key=numbers), ""
+    if kind == "far":
+        # The page lists stable builds before nightlies; GitHub's latest release is a nightly
+        page = fetch("https://www.farmanager.com/download.php", {}).decode("utf-8")
+        stable = page.split("Nightly builds")[0].split("Stable builds")[-1]
+        match = re.search(r"Far30b(\d+)\.x64\.(\d+)\.7z", stable)
+        if not match:
+            raise ValueError("no stable x64 build on farmanager.com/download.php")
+        return f"3.0.{match[1]}", f"FAR_BUILD={match[1]} FAR_DATE={match[2]}"
     raise ValueError(f"unknown source kind {kind}")
 
 

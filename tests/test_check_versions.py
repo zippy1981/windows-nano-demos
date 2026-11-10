@@ -14,7 +14,10 @@ GITHUB = "https://api.github.com/repos"
 RESPONSES: dict[str, bytes] = {
     f"{GITHUB}/ip7z/7zip/releases/latest": json.dumps({"tag_name": "26.06"}).encode(),
     f"{GITHUB}/micro-editor/micro/releases/latest": json.dumps({"tag_name": "v2.0.15"}).encode(),
-    f"{GITHUB}/FarGroup/FarManager/releases/latest": json.dumps({"tag_name": "ci/v3.0.6751.5034"}).encode(),
+    "https://www.farmanager.com/download.php": (
+        b'<h2>Stable builds</h2><a href="files/Far30b6699.x64.20260614.7z">x64</a>'
+        b'<h2>Nightly builds</h2><a href="files/Far30b6751.x64.20261110.7z">x64</a>'
+    ),
     f"{GITHUB}/git-for-windows/git/releases/latest": json.dumps({"tag_name": "v2.57.0.windows.1"}).encode(),
     f"{GITHUB}/mysql/mysql-server/git/matching-refs/tags/mysql-8.4.": json.dumps(
         [{"ref": "refs/tags/mysql-8.4.9"}, {"ref": "refs/tags/mysql-8.4.13"}, {"ref": "refs/tags/mysql-8.4.11"}]
@@ -59,7 +62,7 @@ def test_every_dockerfile_pin_has_a_source(pin: cv.Pin) -> None:
     [
         ("SEVENZIP_VERSION", "26.05", ("26.06", "outdated")),
         ("MICROEDITOR_VERSION", "2.0.15", ("2.0.15", "current")),
-        ("FAR_VERSION", "3.0.6699", ("3.0.6751.5034", "outdated")),
+        ("FAR_VERSION", "3.0.6698", ("3.0.6699", "outdated")),
         ("MINGIT_VERSION", "2.56.0.4", ("2.57.0.1", "outdated")),
         ("MYSQL_VERSION", "8.4.11", ("8.4.13", "outdated")),
         ("CADDY_VERSION", "v2.11.9", ("v2.11.9", "current")),
@@ -80,6 +83,17 @@ def test_each_source_kind(name: str, current: str, expected: tuple[str, str]) ->
 def test_php_names_the_toolset_and_a_newer_series() -> None:
     [row] = cv.check([cv.Pin("x/Dockerfile", "PHP_VERSION", "8.5.12")], fake_fetch)
     assert row.note.startswith("toolset vs17; newer series 8.6 exists")
+
+
+def test_far_reports_the_stable_build_not_the_nightly() -> None:
+    [row] = cv.check([cv.Pin("x/Dockerfile", "FAR_VERSION", "3.0.6699")], fake_fetch)
+    assert (row.latest, row.status) == ("3.0.6699", "current")
+    assert row.note.startswith("FAR_BUILD=6699 FAR_DATE=20260614")
+
+
+def test_far_without_a_stable_build_is_an_error() -> None:
+    with pytest.raises(ValueError, match="no stable x64 build"):
+        cv.latest("far", "", "3.0.1", lambda url, headers: b"<h2>Nightly builds</h2>Far30b1.x64.1.7z")
 
 
 def test_a_short_pin_matches_a_longer_release() -> None:

@@ -21,7 +21,7 @@ ENV \
     FAR_VERSION=3.0.6699 \
     FAR_BUILD=6699 \
     FAR_DATE=20260614 \
-    SEVENZIP_VERSION=26.05 \
+    SEVENZIP_VERSION=26.06 \
     FAR_DIR="C:\\Program Files\\Far Manager"
 
 SHELL ["cmd", "/S", "/C"]

@@ -22,7 +22,7 @@ Port 8080 serves `http://<cache>:8080/healthz` and `/root.crt`, the root CA cert
 
 ## How the cache is stored on disk
 
-The cache handler is [Souin](https://github.com/darkweak/souin) (v1.7.9 under cache-handler v0.17.0), and `C:\cache` is written by its [simplefs](https://github.com/darkweak/storages/tree/main/simplefs) storage (v0.0.22). Simplefs does not keep the downloaded file under its own name. A cached artifact looks like this:
+The cache handler is [Souin](https://github.com/darkweak/souin) (v1.7.9 under cache-handler v0.17.0), and `C:\cache` is written by its [simplefs](https://github.com/darkweak/storages/tree/main/simplefs) storage (v0.0.23). Simplefs does not keep the downloaded file under its own name. A cached artifact looks like this:
 
 ```text
 C:\cache\

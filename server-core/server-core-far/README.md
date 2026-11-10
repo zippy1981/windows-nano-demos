@@ -28,7 +28,7 @@ build.cmd
 
 `build.cmd` also passes `BASE_IMAGE` through to `docker build` when it's set. The default is `mcr.microsoft.com/windows/servercore:ltsc%WINDOWS_VERSION%-amd64`.
 
-There are no host DLLs to stage. Far links the C runtime statically, so it doesn't need `vcruntime140.dll`. Far ships only as `.7z` and `.msi`, and Windows Server's `tar.exe` can't unpack the `.7z` (`tar: LZMA codec is unsupported`). So the Dockerfile downloads the standalone `7zr.exe` 26.05 from the 7-Zip GitHub releases, extracts Far with it, and then deletes it. Unlike `nano-server/nano-server-php`, you don't need 7-Zip installed on the host.
+There are no host DLLs to stage. Far links the C runtime statically, so it doesn't need `vcruntime140.dll`. Far ships only as `.7z` and `.msi`, and Windows Server's `tar.exe` can't unpack the `.7z` (`tar: LZMA codec is unsupported`). So the Dockerfile downloads the standalone `7zr.exe` 26.06 from the 7-Zip GitHub releases, extracts Far with it, and then deletes it. Unlike `nano-server/nano-server-php`, you don't need 7-Zip installed on the host.
 
 ## Running
 

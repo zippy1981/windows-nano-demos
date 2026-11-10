@@ -22,9 +22,9 @@ SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop';
 # spaces use single quotes and + rather than "...".
 # 7-Zip unpacks the downloads. The nano zip uses Deflate64, which Windows PowerShell's Expand-Archive can't decompress
 # and tar.exe silently writes as zero bytes. 7zr.exe only reads .7z, so it unpacks the "extra" package that holds 7za.exe.
-ENV SEVENZIP_VERSION=26.05 \
-    SEVENZR_SHA256=9BF582B894DFA665F852D7E9112B02290A1C303C2D95A21FCDC41FFCB03143B7 \
-    SEVENZIP_EXTRA_SHA256=F27A8F103C84785026EDCBA1F67FAF1357225DF9D19DDB0B7760D55947141BC7
+ENV SEVENZIP_VERSION=26.06 \
+    SEVENZR_SHA256=E80DB2DAD715A6C5ADABE292D31ED54E11F4E9B99CA349827B50573B175891BC \
+    SEVENZIP_EXTRA_SHA256=396C180F12D2247C24B0B1FCD482C6FC2A2700F61211FFEDE1061DD971F5E104
 RUN $base = 'https://github.com/ip7z/7zip/releases/download/' + ${env:SEVENZIP_VERSION}; \
     $extra = '7z' + (${env:SEVENZIP_VERSION} -replace '[.]', '') + '-extra.7z'; \
     curl.exe -fsSLo C:\7zr.exe ($base + '/7zr.exe'); if ($LASTEXITCODE) { throw ('7zr.exe download failed: ' + $LASTEXITCODE) }; \

@@ -9,7 +9,7 @@ out each payload's URL by hashing candidate URLs and matching the hashes
 against the file names, because the Caddyfile's key { hash } means the URL
 itself is stored nowhere.
 
-Validated against cache-handler v0.17.0 (Souin) and simplefs v0.0.22, the
+Validated against cache-handler v0.17.0 (Souin) and simplefs v0.0.23, the
 versions pinned in this folder's Dockerfile. A test in tests/ fails when
 those pins change, so the parser is re-checked before a bump is trusted.
 
@@ -46,7 +46,7 @@ param(
 )
 
 $script:ValidatedCacheHandlerVersion = 'v0.17.0'
-$script:ValidatedSimplefsVersion = 'v0.0.22'
+$script:ValidatedSimplefsVersion = 'v0.0.23'
 
 # Hosts whose Caddyfile site drops the query string from the cache key.
 $script:BlobHost = @('release-assets.githubusercontent.com', 'objects.githubusercontent.com')

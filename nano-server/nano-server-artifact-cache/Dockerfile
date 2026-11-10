@@ -22,9 +22,9 @@ FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64 AS build
 ENV \
     GO_VERSION=1.27.3 \
     XCADDY_VERSION=v0.4.7 \
-    CADDY_VERSION=v2.11.8 \
+    CADDY_VERSION=v2.11.9 \
     CACHE_HANDLER_VERSION=v0.17.0 \
-    SIMPLEFS_VERSION=v0.0.22
+    SIMPLEFS_VERSION=v0.0.23
 
 SHELL ["powershell", "-NoLogo", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop';"]
 

@@ -17,7 +17,7 @@ ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
 FROM ${BASE_IMAGE}
 
 # Pinned version (8.4 is the current LTS series)
-ENV MYSQL_VERSION=8.4.11
+ENV MYSQL_VERSION=8.4.13
 
 # Install location. This has to be a separate ENV instruction: ENV can't reference variables set in the same instruction.
 ENV MYSQL_DIR="C:\\mysql"

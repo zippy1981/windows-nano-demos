@@ -12,7 +12,7 @@ Available at <https://hub.docker.com/repository/docker/zippy1981/windows-nano-ph
 | --- | --- |
 | PHP (NTS x64, vs17) | 8.5.12-1 |
 | Node.js (LTS) | 26.13.0 |
-| npm | 12.2.1 |
+| npm | 12.2.2 |
 | micro | 2.0.15 |
 | Composer | latest at build time |
 

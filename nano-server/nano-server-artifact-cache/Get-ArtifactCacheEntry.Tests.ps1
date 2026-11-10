@@ -2,7 +2,7 @@
 .SYNOPSIS
 Pester tests for Get-ArtifactCacheEntry.ps1 against fixture cache files.
 .DESCRIPTION
-The fixtures under fixtures/cache are in simplefs v0.0.22 format: payload
+The fixtures under fixtures/cache are in simplefs v0.0.22 format (unchanged in v0.0.23): payload
 files named by the xxhash64 of their varied key, and .simplefs-index files
 named by the xxhash64 of the base key, holding protobuf StorageMapper
 entries. They model one fresh entry without Vary (7zr.exe), one stale entry

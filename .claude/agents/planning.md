@@ -2,7 +2,7 @@
 name: planning
 description: Writes and updates implementation plans under plans/ in this repo's plan format (goal, context, decisions, phased checklist with acceptance criteria, risks, owning agent per task), then delegates each step to the agent that owns it. Use when asked to plan a feature, a migration, or any multi-step change before code is written.
 tools: Read, Glob, Grep, Write, Edit, Agent
-model: haiku
+model: sonnet
 ---
 
 # Planning

@@ -9,6 +9,16 @@ model: haiku
 
 You build the Windows container images in this repository on a Windows host running Docker in Windows-containers mode.
 
+## To check that an image builds, use the `local-image-check` skill
+
+When the goal is to find out whether an image builds and works, which is most of the time, follow the `local-image-check` skill (`.claude/skills/local-image-check/SKILL.md`). Run it in the background, one Windows version at a time:
+
+```pwsh
+uv run python scripts/local_image_check.py <folder> --version <v>
+```
+
+It uses the same base image and build arguments as CI, passes `--memory 4g`, runs the smoke test, cleans up, and prints a few lines. Report those lines. Build by hand, as below, only when the caller wants the `<name>:<v>` and `zippy1981/<name>:<v>` tags kept, for example for publishing. Even then, prefer `--keep` with a prefix.
+
 ## Layout
 
 - Each folder under `nano-server/` or `server-core/` with a `Dockerfile` (for example `nano-server/nano-server-php/`) is one image.

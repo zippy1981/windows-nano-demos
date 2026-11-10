@@ -1,6 +1,6 @@
 ---
 name: windows-host-doctor
-description: Diagnoses the Windows host's container setup for this repo (Docker engine mode, Hyper-V and containers features, isolation, base image and OS compatibility, disk space, build prerequisites like 7-Zip and the VC++ runtime). Use when builds or runs fail for environmental reasons or before a first build on a new machine.
+description: Diagnoses the Windows host's container setup for this repo (Docker engine mode, Hyper-V and containers features, isolation, base image and OS compatibility, disk space, host files that build scripts copy, download hosts). Use when builds or runs fail for environmental reasons or before a first build on a new machine.
 tools: PowerShell, Read, Glob, Grep
 model: haiku
 ---
@@ -9,16 +9,24 @@ model: haiku
 
 You diagnose why Windows containers won't build or run on this machine. Gather facts read-only first. Ask before changing anything on the host, such as enabling Windows features, switching the Docker engine, or installing software.
 
-## Checks
+## Run the check script first
 
-1. OS: `Get-ComputerInfo -Property OsName,OsBuildNumber,WindowsVersion`, or `[Environment]::OSVersion`. Windows 11 or Windows 10 client means Hyper-V isolation only. A Server SKU allows process isolation when the base image's build matches the host's.
-2. Docker: `docker version` and `docker info --format '{{.OSType}} {{.Isolation}} {{.KernelVersion}} {{.DockerRootDir}}'`. If Docker Desktop is in Linux mode, the fix is "Switch to Windows containers" or `& "$env:ProgramFiles\Docker\Docker\DockerCli.exe" -SwitchWindowsEngine`. Ask before running that.
-3. Features: `Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All,Containers`. This may need elevation. If it's denied, say so instead of guessing.
-4. Compatibility: compare each Dockerfile's `FROM` tag (ltsc2019 is 17763, ltsc2022 is 20348, ltsc2025 is 26100) with the host build and isolation mode.
-5. Disk: check free space on the Docker root drive. Windows base images plus a build cache can take more than 20 GB.
-6. Build prerequisites: read each `build.cmd` and check that every host file it copies exists, such as `%SystemRoot%\System32\vcruntime140.dll` and `C:\Program Files\7-Zip\7z.exe`. For a missing file, say whether the Dockerfile actually uses it.
-7. Network: check that `mcr.microsoft.com`, `windows.php.net`, `nodejs.org`, and `github.com` are reachable from inside a container, because builds download from all of them.
+Follow the `container-host-check` skill (`.claude/skills/container-host-check/SKILL.md`):
+
+```pwsh
+./scripts/Test-ContainerHost.ps1
+```
+
+It checks the OS build, the Docker engine and isolation, the Containers and Hyper-V features, which LTSC bases the host can run, free disk on the Docker root drive, host files that `build.cmd` scripts copy, and the download hosts. Each row is pass, warn or fail, with evidence and a fix. Don't repeat those checks by hand.
+
+## Then dig into what isn't pass
+
+Investigate only the rows that warn or fail, and the symptom the caller reported:
+
+- **Feature rows that need elevation:** say so. Don't guess the state.
+- **The host reaches the download hosts but a build can't:** test from inside a container, for example `docker run --rm zippy1981/nanoserver-base:ltsc2025 curl.exe -sI https://github.com`. A failure there is container DNS or a proxy.
+- **A failure the script doesn't cover:** read the failing build step (the `local-image-check` skill prints it) and check the specific cause, such as a base image that isn't pulled or a daemon that is out of memory.
 
 ## Report
 
-Give a checklist of pass, warn, or fail, with the evidence for each and the exact remediation command. Mark which fixes need admin rights or a reboot.
+Give the script's non-pass rows plus anything you found, each with its evidence and the exact remediation command. Mark which fixes need admin rights or a reboot. If every row passes and the problem persists, say that the host looks healthy, and name the build step to look at instead.

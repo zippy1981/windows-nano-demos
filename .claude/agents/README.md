@@ -41,6 +41,24 @@ Model choice is the biggest lever on cost. Most tokens in this repo go on waitin
 - Agents that drive docker on Windows get PowerShell only, not both shells.
 - `planning` and `adr` can write, but their prompts restrict them to `plans/` and `docs/adr/`. That is enforced by the prompt, not by Claude Code, so `governance` checks it.
 
+## Skills the agents use
+
+A fixed procedure belongs in a skill backed by a script, which prints only the answer. Then an agent, or the main session without starting one, doesn't spend tokens re-deriving it by reading files, logs or release indexes. The skills are in `.claude/skills/`. `tests/test_governance.py` checks that every skill an agent names exists.
+
+| Skill | Script | Used by |
+| --- | --- | --- |
+| `local-image-check` | `scripts/local_image_check.py` | `windows-container-builder`, `windows-container-tester`, `cicd-engineer`, `windows-deps-updater` |
+| `version-check` | `scripts/check_versions.py` | `windows-deps-updater` |
+| `container-host-check` | `scripts/Test-ContainerHost.ps1` | `windows-host-doctor` |
+| `actionlint` | `scripts/actionlint.py` | `workflow-author`, `cicd-engineer` |
+| `governance-scan` | `uv run pytest` and the two above | the caller, before starting `governance` |
+| `ci-triage`, `repo-status`, `codecov`, `coverage-gaps` | `scripts/ci_triage.py`, `scripts/repo_status.py`, `scripts/coverage_gaps.py` | `ci-watcher`, `workflow-author`, `cicd-engineer`, `python-author` |
+| `docker-hub` | — | `windows-image-publisher` |
+| `image-scaffolder` | `scripts/New-NanoServerImage.ps1` | `windows-demo-scaffolder`, named in plans by `planning` |
+| `markdown-lint`, `dockerfile-docs` | — | `markdown-reviewer`, `markdown-fixer`, and the rules `planning` and `adr` write to |
+| `safe-docker-cleanup` | `scripts/Remove-DockerArtifacts.ps1` | `windows-container-builder`, `local-image-check` |
+| `pr-shepherd` | `scripts/union_merge.py` | any agent asked to rebase, retarget a stack or merge |
+
 ## Container work: who does what
 
 `windows-demo-scaffolder` creates a new demo folder end to end, including its first Dockerfile. After that, `container-author` owns Dockerfile changes, `workflow-author` owns the folder's workflow, and `windows-dockerfile-reviewer` reviews. They stay separate because scaffolding (folder layout, README, root README entry) is a one-time job, while Dockerfile edits happen every month.

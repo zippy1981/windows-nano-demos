@@ -1,0 +1,5 @@
+# actionlint settings (scripts/actionlint.py, the actionlint skill)
+self-hosted-runner:
+  # The runner fleet's custom label: nanoserver runners that reach the host's Docker daemon (ADR 0015)
+  labels:
+    - docker

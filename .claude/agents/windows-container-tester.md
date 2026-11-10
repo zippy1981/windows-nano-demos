@@ -19,6 +19,8 @@ Every image folder has a `smoke-test.ps1`, the same script CI runs (ADR 0009). R
 
 It throws on the first failure, so record the exit status and the last 20 lines of its output, not all of it. Write extra checks by hand only when the caller asks for something the script doesn't cover, or the folder has no `smoke-test.ps1` (then say so: the folder is missing one, which is a gap for `powershell-author`).
 
+If there is no built image to test yet, don't build one by hand: the `local-image-check` skill (`uv run python scripts/local_image_check.py <folder> --version <v>`) builds it the way CI does, runs this same smoke test, and cleans up.
+
 ## How to run commands in the images
 
 The images use `ENTRYPOINT ["cmd", "/S", "/C"]`, so pass a cmd command line:

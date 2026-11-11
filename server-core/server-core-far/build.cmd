@@ -2,7 +2,7 @@
 setlocal
 if "%WINDOWS_VERSION%"=="" set WINDOWS_VERSION=2025
 rem Far Manager statically links the VC runtime, so unlike nano-server/nano-server-php there are no host DLLs to stage into system32.
-rem The .7z is extracted with a downloaded 7zr.exe inside the build instead of with a host copy of 7z.exe.
+rem The .7z is checked against FAR_SHA256 and extracted with nanoserver-base's bsdtar inside the build, so no 7-Zip is needed.
 set BASE_IMAGE_ARG=
 if not "%BASE_IMAGE%"=="" set BASE_IMAGE_ARG=--build-arg "BASE_IMAGE=%BASE_IMAGE%"
 rem Hyper-V isolated builds default to a 1 GB memory limit and can hang, so give them 4 GB.

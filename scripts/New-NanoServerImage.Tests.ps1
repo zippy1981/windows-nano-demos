@@ -413,7 +413,6 @@ Describe 'New-NanoServerImage existing image patterns' {
             Name = 'far'
             Url = 'https://www.farmanager.com/files/Far30b%FAR_BUILD%.x64.%FAR_DATE%.7z'
             Archive = 'Far30b%FAR_BUILD%.x64.%FAR_DATE%.7z'
-            ExtractionTool = '7z.exe'
         }
     ) {
         $relativeDockerfile = if ($Dockerfile) { $Dockerfile } else { "nano-server/nano-server-$Image/Dockerfile" }

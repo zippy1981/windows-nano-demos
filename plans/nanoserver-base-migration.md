@@ -39,9 +39,9 @@ Phase 1 of [#71](https://github.com/zippy1981/windows-nano-demos/issues/71): eve
 
 ### PR 3: Far and Server Core
 
-- [ ] **windows-container-tester:** check Far's imports against the base on each version, and try `far.exe -?`. Report whether it can run.
-- [ ] If it can, move Far to `nano-server/` and stop downloading 7-Zip. If it can't, record why here and in Far's README.
-- [ ] Open an issue on windows-nano-baseimages for a Server Core image with bsdtar.
+- [x] **windows-container-tester:** check Far's imports against the base on each version, and try `far.exe -?`. Report whether it can run. Done in #85: it runs on ltsc2025 only; 2019 and 2022 exit `0xC0000135`.
+- [x] If it can, move Far to `nano-server/` and stop downloading 7-Zip. If it can't, record why here and in Far's README. Far stays on Server Core (its README has the evidence), and a nanoserver-base stage extracts it with bsdtar, so 7-Zip isn't downloaded. Moving ltsc2025 to Nano Server is #87.
+- [x] Open an issue on windows-nano-baseimages for a Server Core image with bsdtar: [windows-nano-baseimages#13](https://github.com/zippy1981/windows-nano-baseimages/issues/13).
 
 ## Not in this plan
 

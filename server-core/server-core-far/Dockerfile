@@ -7,43 +7,48 @@
 
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
 ARG WINDOWS_VERSION=2025
-# Far Manager can NOT run on nanoserver, so this image is based on servercore.
-# Far.exe statically imports desktop Win32 DLLs that nanoserver doesn't ship (WINSPOOL.DRV, COMDLG32,
-# SHELL32, SETUPAPI, IMM32, ...). On nanoserver ltsc2022 it exits with 0xC0000135 (STATUS_DLL_NOT_FOUND)
-# before printing anything. Copying those DLLs over from servercore just changes the error to
-# 0xC0000139 (STATUS_ENTRYPOINT_NOT_FOUND), because the OS DLLs depend on each other across SKUs.
+# The image the final stage is built on, and the one the download is checked in. CI pins it to a digest.
+# Far needs Server Core on ltsc2019 and ltsc2022. Far.exe statically imports desktop Win32 DLLs, and on
+# nanoserver-base:ltsc2019 and ltsc2022 it exits with 0xC0000135 (STATUS_DLL_NOT_FOUND) before printing anything.
+# Of its direct imports, netapi32.dll is the one ltsc2025 has and they don't. Copying DLLs over from Server Core
+# only changes the error to 0xC0000139 (STATUS_ENTRYPOINT_NOT_FOUND). On ltsc2025 Far runs on nanoserver-base (#85).
 # Set with --build-arg BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc2022-amd64.
 ARG BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64
-FROM ${BASE_IMAGE}
 
-# Pinned versions. FAR_BUILD/FAR_DATE identify the stable build listed on https://www.farmanager.com/download.php
-ENV \
-    FAR_VERSION=3.0.6699 \
-    FAR_BUILD=6699 \
+# Download Far and check its SHA-256 with certutil and findstr, which Server Core has and Nano Server doesn't.
+# FAR_BUILD and FAR_DATE identify the stable build listed on https://www.farmanager.com/download.php, which publishes
+# no checksums: FAR_SHA256 was computed from that download. Update all three together.
+FROM ${BASE_IMAGE} AS download
+SHELL ["cmd", "/S", "/C"]
+ENV FAR_BUILD=6699 \
     FAR_DATE=20260614 \
-    SEVENZIP_VERSION=26.06 \
-    FAR_DIR="C:\\Program Files\\Far Manager"
+    FAR_SHA256=0030e9bf36afded1fd0647fb105446a93c49ce15db32d554fad62146c0665063
+RUN curl -fsSL -o C:\far.7z https://www.farmanager.com/files/Far30b%FAR_BUILD%.x64.%FAR_DATE%.7z && \
+    (certutil -hashfile C:\far.7z SHA256 | findstr /i /x %FAR_SHA256% > NUL || (echo far.7z has the wrong SHA-256 & exit 1))
 
+# Far ships only as .7z and .msi. Windows Server's own tar.exe can't read the .7z (LZMA with BCJ2), but
+# nanoserver-base's bsdtar can (ADR 0017), so no 7-Zip download is needed. The stage's files are copied out, so its
+# OS version doesn't matter, but it matches WINDOWS_VERSION so the host can run it with process isolation.
+FROM zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION} AS extract
+USER ContainerAdministrator
+COPY --from=download C:/far.7z C:/far.7z
+RUN mkdir C:\far && tar -xf C:\far.7z -C C:\far
+
+FROM ${BASE_IMAGE}
+ENV FAR_VERSION=3.0.6699 \
+    FAR_DIR="C:\\Program Files\\Far Manager"
 SHELL ["cmd", "/S", "/C"]
 
-# Far Manager is only published as .7z and .msi. Windows Server's tar.exe can't read Far's .7z
-# ("tar: LZMA codec is unsupported" on ltsc2022), so we download the standalone 7zr.exe (a 32-bit
-# binary; servercore has WoW64, nanoserver doesn't), extract with it, and delete it again.
-# Far statically links the VC runtime (no vcruntime140.dll / msvcp140.dll imports), so no DLLs need staging.
-RUN curl -fL -o C:\7zr.exe https://github.com/ip7z/7zip/releases/download/%SEVENZIP_VERSION%/7zr.exe && \
-    curl -fL -o C:\far.7z https://www.farmanager.com/files/Far30b%FAR_BUILD%.x64.%FAR_DATE%.7z && \
-    C:\7zr.exe x C:\far.7z -o"%FAR_DIR%" -y && \
-    del C:\far.7z C:\7zr.exe
+# Far statically links the VC runtime (no vcruntime140.dll or msvcp140.dll imports), so no DLLs need staging.
+COPY --from=extract ["C:/far/", "C:/Program Files/Far Manager/"]
 
 # servercore runs as ContainerAdministrator by default; nanoserver runs as ContainerUser.
 # Switch so this image behaves like the nanoserver ones (non-admin user, PATH in that user's HKCU).
 USER ContainerUser
 
-# Add Far to the path
-# The users path is empty at this point so we dont need to append
-# Set path. In nano 2019 we need to make the users environment key before we can add values to it. We dont need the call to reg.exe in 2022
-RUN reg query HKCU\Environment 2> NUL || reg add HKCU\Environment /v PATH
-RUN setx PATH "%FAR_DIR%"
+# Put Far on ContainerUser's PATH, which is empty here, so nothing is appended. ltsc2019 has no HKCU\Environment key
+# until it is created, so create it first if needed. One RUN, because each one starts a container.
+RUN (reg query HKCU\Environment 2> NUL || reg add HKCU\Environment /v PATH) && setx PATH "%FAR_DIR%"
 
 # The container has two users, ContainerAdministrator and ContainerUser.
 # They don't show up in the Net User command, but they have profile directories with registry hives.

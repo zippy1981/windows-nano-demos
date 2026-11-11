@@ -7,7 +7,7 @@
 
 # Windows Server LTSC version to build for: 2019, 2022 or 2025 (the default). Set with --build-arg WINDOWS_VERSION=2022.
 ARG WINDOWS_VERSION=2025
-# The image the final stage is built on, and the one the download is checked in. CI pins it to a digest.
+# The image the final stage is built on. CI pins it to a digest.
 # Far needs Server Core on ltsc2019 and ltsc2022. Far.exe statically imports desktop Win32 DLLs, and on
 # nanoserver-base:ltsc2019 and ltsc2022 it exits with 0xC0000135 (STATUS_DLL_NOT_FOUND) before printing anything.
 # Of its direct imports, netapi32.dll is the one ltsc2025 has and they don't. Copying DLLs over from Server Core
@@ -15,24 +15,26 @@ ARG WINDOWS_VERSION=2025
 # Set with --build-arg BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc2022-amd64.
 ARG BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64
 
-# Download Far and check its SHA-256 with certutil and findstr, which Server Core has and Nano Server doesn't.
+# Download Far, check its SHA-256 and unpack it in one nanoserver-base stage. The -pwsh tag has PowerShell for
+# Get-FileHash (Nano Server has no certutil), and tar is the base's bsdtar 3.8.11: C:\tools\bin comes first on PATH
+# and holds bsdtar as tar.exe, ahead of System32's tar.exe. Far ships only as .7z and .msi, and System32's tar can't
+# read the .7z (LZMA with BCJ2), but bsdtar can (ADR 0017), so neither Server Core nor a 7-Zip download is needed
+# before the final stage. The stage's files are copied out, so its OS version doesn't matter, but it matches
+# WINDOWS_VERSION so the host can run it with process isolation. The download goes to a file first; piping it into
+# tar is forbidden (tests/test_no_tar_from_pipe.py).
 # FAR_BUILD and FAR_DATE identify the stable build listed on https://www.farmanager.com/download.php, which publishes
 # no checksums: FAR_SHA256 was computed from that download. Update all three together.
-FROM ${BASE_IMAGE} AS download
-SHELL ["cmd", "/S", "/C"]
+FROM zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}-pwsh AS fetch
+SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 ENV FAR_BUILD=6699 \
     FAR_DATE=20260614 \
     FAR_SHA256=0030e9bf36afded1fd0647fb105446a93c49ce15db32d554fad62146c0665063
-RUN curl -fsSL -o C:\far.7z https://www.farmanager.com/files/Far30b%FAR_BUILD%.x64.%FAR_DATE%.7z && \
-    (certutil -hashfile C:\far.7z SHA256 | findstr /i /x %FAR_SHA256% > NUL || (echo far.7z has the wrong SHA-256 & exit 1))
-
-# Far ships only as .7z and .msi. Windows Server's own tar.exe can't read the .7z (LZMA with BCJ2), but
-# nanoserver-base's bsdtar can (ADR 0017), so no 7-Zip download is needed. The stage's files are copied out, so its
-# OS version doesn't matter, but it matches WINDOWS_VERSION so the host can run it with process isolation.
-FROM zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION} AS extract
-USER ContainerAdministrator
-COPY --from=download C:/far.7z C:/far.7z
-RUN mkdir C:\far && tar -xf C:\far.7z -C C:\far
+RUN curl.exe -fsSL -o C:\far.7z ('https://www.farmanager.com/files/Far30b' + ${env:FAR_BUILD} + '.x64.' + ${env:FAR_DATE} + '.7z'); \
+    if ($LASTEXITCODE) { throw ('far.7z download failed: ' + $LASTEXITCODE) }; \
+    if ((Get-FileHash C:\far.7z).Hash -ne ${env:FAR_SHA256}) { throw 'far.7z has the wrong SHA-256' }; \
+    New-Item -ItemType Directory C:\far | Out-Null; \
+    tar -xf C:\far.7z -C C:\far; \
+    if ($LASTEXITCODE) { throw ('tar could not unpack far.7z: ' + $LASTEXITCODE) }
 
 FROM ${BASE_IMAGE}
 ENV FAR_VERSION=3.0.6699 \
@@ -40,7 +42,7 @@ ENV FAR_VERSION=3.0.6699 \
 SHELL ["cmd", "/S", "/C"]
 
 # Far statically links the VC runtime (no vcruntime140.dll or msvcp140.dll imports), so no DLLs need staging.
-COPY --from=extract ["C:/far/", "C:/Program Files/Far Manager/"]
+COPY --from=fetch ["C:/far/", "C:/Program Files/Far Manager/"]
 
 # servercore runs as ContainerAdministrator by default; nanoserver runs as ContainerUser.
 # Switch so this image behaves like the nanoserver ones (non-admin user, PATH in that user's HKCU).

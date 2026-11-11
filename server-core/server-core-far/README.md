@@ -30,9 +30,8 @@ build.cmd
 
 There are no host DLLs to stage. Far links the C runtime statically, so it doesn't need `vcruntime140.dll`. Far ships only as `.7z` and `.msi`, and Windows Server's `tar.exe` can't unpack the `.7z` (`tar: LZMA codec is unsupported`). The Dockerfile has three stages:
 
-1. **download** (Server Core) downloads the `.7z` and checks it against `FAR_SHA256` with `certutil`. farmanager.com publishes no checksums, so the hash was computed from that download. Update `FAR_BUILD`, `FAR_DATE` and `FAR_SHA256` together. `scripts/check_versions.py` says when a new stable build is out.
-2. **extract** (`zippy1981/nanoserver-base`) unpacks it with the base's bsdtar, which reads Far's LZMA and BCJ2 `.7z` (ADR 0017). No 7-Zip is downloaded, and none is needed on the host.
-3. The final Server Core stage copies the extracted folder in one layer and puts it on `ContainerUser`'s `PATH`.
+1. **fetch** (`zippy1981/nanoserver-base`'s `-pwsh` tag) downloads the `.7z` to a file, checks it against `FAR_SHA256` with PowerShell's `Get-FileHash`, and unpacks it with the base's bsdtar 3.8.11 (`tar.exe` in `C:\tools\bin`, first on `PATH`), which reads Far's LZMA and BCJ2 `.7z` (ADR 0017). farmanager.com publishes no checksums, so the hash was computed from that download. Update `FAR_BUILD`, `FAR_DATE` and `FAR_SHA256` together. `scripts/check_versions.py` says when a new stable build is out. No 7-Zip is downloaded, and none is needed on the host.
+2. The final Server Core stage copies the extracted folder in one layer and puts it on `ContainerUser`'s `PATH`.
 
 ## Running
 

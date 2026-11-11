@@ -16,7 +16,7 @@ ARG WINDOWS_VERSION=2025
 ARG BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64
 
 # Download Far, check its SHA-256 and unpack it in one nanoserver-base stage. The -pwsh tag has PowerShell for
-# Get-FileHash (Nano Server has no certutil), and tar is the base's bsdtar 3.8.11: C:\tools\bin comes first on PATH
+# Get-FileHash (Nano Server has no certutil; the shell is pwsh, not powershell), and tar is the base's bsdtar 3.8.11: C:\tools\bin comes first on PATH
 # and holds bsdtar as tar.exe, ahead of System32's tar.exe. Far ships only as .7z and .msi, and System32's tar can't
 # read the .7z (LZMA with BCJ2), but bsdtar can (ADR 0017), so neither Server Core nor a 7-Zip download is needed
 # before the final stage. The stage's files are copied out, so its OS version doesn't matter, but it matches
@@ -25,7 +25,7 @@ ARG BASE_IMAGE=mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64
 # FAR_BUILD and FAR_DATE identify the stable build listed on https://www.farmanager.com/download.php, which publishes
 # no checksums: FAR_SHA256 was computed from that download. Update all three together.
 FROM zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}-pwsh AS fetch
-SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+SHELL ["pwsh", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 ENV FAR_BUILD=6699 \
     FAR_DATE=20260614 \
     FAR_SHA256=0030e9bf36afded1fd0647fb105446a93c49ce15db32d554fad62146c0665063

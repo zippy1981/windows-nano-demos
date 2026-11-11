@@ -31,7 +31,8 @@ ENV \
     NODE_DIRECTORY="C:\\Program Files\\node-v${NODE_VERSION}-win-x64" \
     PHP_DIR="C:\\Program Files\\php"
 
-# Download and install nodejs. We do it in two commands because the curl | tar -xf - -C c:/ command doesn't extract all the files
+# Download and install Node.js. Download to a file first, then tar -xf the file: piping a zip into
+# tar silently drops files on Windows, and tests/test_no_tar_from_pipe.py forbids it here for good.
 RUN mkdir "%NODE_DIRECTORY%" && \
     curl -fLOJ https://nodejs.org/dist/v%NODE_VERSION%/node-v%NODE_VERSION%-win-x64.zip && \
     tar -xf node-v%NODE_VERSION%-win-x64.zip -C "%ProgramFiles%" && \
@@ -39,8 +40,9 @@ RUN mkdir "%NODE_DIRECTORY%" && \
 
 # Download PHP and extract it to %PHP_DIR% using curl and tar
 # Use the archives path: it keeps every release, while /releases/ only has the latest patch of each branch
-# Download to a file first: piping the zip into tar silently skips entries (it dropped brotlicommon.dll, which php_curl.dll needs)
-# (https://github.com/zippy1981/windows-nano-baseimages/issues/8).
+# Download to a file first: piping the zip into tar silently skips entries (it dropped brotlicommon.dll, which
+# php_curl.dll needs). That stays forbidden here even after the upstream fix lands
+# (https://github.com/zippy1981/windows-nano-baseimages/issues/8, tests/test_no_tar_from_pipe.py).
 # The last command fails the build if any of the enabled extensions doesn't load
 RUN mkdir "%PHP_DIR%" && \
     curl -fLo php.zip https://windows.php.net/downloads/releases/archives/php-%PHP_VERSION%-nts-Win32-vs%PHP_VS_VERSION%-x64.zip && \

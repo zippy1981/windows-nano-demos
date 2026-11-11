@@ -40,6 +40,7 @@ RUN mkdir "%NODE_DIRECTORY%" && \
 # Download PHP and extract it to %PHP_DIR% using curl and tar
 # Use the archives path: it keeps every release, while /releases/ only has the latest patch of each branch
 # Download to a file first: piping the zip into tar silently skips entries (it dropped brotlicommon.dll, which php_curl.dll needs)
+# (https://github.com/zippy1981/windows-nano-baseimages/issues/8).
 # The last command fails the build if any of the enabled extensions doesn't load
 RUN mkdir "%PHP_DIR%" && \
     curl -fLo php.zip https://windows.php.net/downloads/releases/archives/php-%PHP_VERSION%-nts-Win32-vs%PHP_VS_VERSION%-x64.zip && \

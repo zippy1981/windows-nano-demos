@@ -22,6 +22,8 @@ SHELL ["powershell", "-NoProfile", "-Command", "$ErrorActionPreference = 'Stop';
 # spaces use single quotes and + rather than "...".
 # 7-Zip unpacks the downloads. The nano zip uses Deflate64, which Windows PowerShell's Expand-Archive can't decompress
 # and tar.exe silently writes as zero bytes. 7zr.exe only reads .7z, so it unpacks the "extra" package that holds 7za.exe.
+# The base's bsdtar can't read Deflate64 either. 7-Zip can go once a base with the fix is published:
+# https://github.com/zippy1981/windows-nano-baseimages/issues/7
 ENV SEVENZIP_VERSION=26.06 \
     SEVENZR_SHA256=E80DB2DAD715A6C5ADABE292D31ED54E11F4E9B99CA349827B50573B175891BC \
     SEVENZIP_EXTRA_SHA256=396C180F12D2247C24B0B1FCD482C6FC2A2700F61211FFEDE1061DD971F5E104

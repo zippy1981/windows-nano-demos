@@ -36,7 +36,7 @@ ENV \
 # COPY system32\* step. If one is ever needed, stage it in build.cmd and add the COPY here.
 
 # Download and install Go. Nanoserver has no "C:\Program Files" folder until we mkdir under it.
-# Download to a file first; piping a zip into tar does not always extract every file.
+# Download to a file first; piping a zip into tar does not always extract every file (https://github.com/zippy1981/windows-nano-baseimages/issues/8).
 RUN mkdir "%GOROOT%" && \
     curl -fLO https://go.dev/dl/go%GO_VERSION%.windows-amd64.zip && \
     tar -xf go%GO_VERSION%.windows-amd64.zip -C "%ProgramFiles%" && \

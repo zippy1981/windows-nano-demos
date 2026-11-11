@@ -24,7 +24,9 @@ ENV MYSQL_DIR="C:\\mysql"
 
 USER ContainerAdministrator
 
-# Download to a file first, then extract to C:\ (the zip holds one mysql-<version>-winx64 folder).
+# Download to a file first, then extract to C:\ (the zip holds one mysql-<version>-winx64 folder). A zip piped
+# into tar loses its first ~64 KB on Windows, and tests/test_no_tar_from_pipe.py forbids piping here for good,
+# whatever the upstream fix does (https://github.com/zippy1981/windows-nano-baseimages/issues/8).
 # Unpacked it is ~1.7 GB, mostly things a server image doesn't need, so strip them in the same layer:
 #  - *.pdb debug symbols (mysqld.pdb alone is 600 MB) and *.lib import libraries
 #  - the debug builds of the DLLs and plugins (bin\*-debug.dll, lib\plugin\debug)

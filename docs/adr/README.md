@@ -20,3 +20,4 @@ These records explain why this repo is built the way it is. Each one covers a si
 | 0014 | [Artifact cache with Caddy on ltsc2025](0014-artifact-cache-with-caddy-on-ltsc2025.md) | Proposed | 2026-11-06 |
 | 0015 | [The runner fleet and the artifact cache run under Docker Compose](0015-runner-fleet-and-artifact-cache-run-under-docker-compose.md) | Proposed | 2026-11-06 |
 | 0017 | [Nano Server images build on zippy1981/nanoserver-base](0017-nano-server-images-build-on-zippy1981-nanoserver-base.md) | Proposed | 2026-11-09 |
+| 0020 | [Build isolation is a setting of the runner host](0020-build-isolation-is-a-setting-of-the-runner-host.md) | Proposed | 2026-11-11 |

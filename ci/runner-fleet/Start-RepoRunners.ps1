@@ -20,6 +20,10 @@ param(
     # Registration names are this plus 1, 2 ... Defaults to <COMPUTERNAME>-base for windows-nano-baseimages, and
     # <COMPUTERNAME>-<repository name> otherwise.
     [string]$NamePrefix,
+    # Runners in each container, as in Start-RunnerFleet.ps1: Count x RunnersPerContainer jobs at once.
+    [ValidateRange(1, 16)][int]$RunnersPerContainer = 1,
+    [string]$Labels = 'nanoserver,docker',
+    [switch]$DisableUpdate,
     [string]$RunnerImage = 'windows-nano-gh-runner:2022',
     [string]$Network = 'windows-nano-ci',
     [string]$CacheIp = '172.31.250.10',
@@ -49,6 +53,9 @@ $env:CACHE_IP = $CacheIp
 $env:RUNNER_REPO = $Repo
 $env:RUNNER_NAME_PREFIX = $NamePrefix
 $env:RUNNER_IMAGE = $RunnerImage
+$env:RUNNERS_PER_CONTAINER = $RunnersPerContainer
+$env:RUNNER_LABELS = $Labels
+$env:RUNNER_DISABLE_UPDATE = $DisableUpdate ? '1' : ''
 
 $names = $services | ForEach-Object { "$NamePrefix$($_ -replace '^runner')" }
 if (-not $PSCmdlet.ShouldProcess("$($names -join ', ') for $Repo (project $Project)", 'compose up')) { return }

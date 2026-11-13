@@ -1,0 +1,91 @@
+# Builds and tests windows-nano-reactos-tools for every Windows version through the shared workflow (ADR 0009),
+# and publishes the pinned ReactOS source and boot CD as a release once the build passes (ADR 0016)
+name: ReactOS tools container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nano-server/nano-server-reactos-tools/**'
+      - '.github/workflows/reactos-tools-container.yml'
+      - '.github/workflows/build-windows-image.yml'
+      - 'nano-server/shared-tools/**'
+      - 'nano-server/.dockerignore'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'nano-server/nano-server-reactos-tools/**'
+      - '.github/workflows/reactos-tools-container.yml'
+      - '.github/workflows/build-windows-image.yml'
+      - 'nano-server/shared-tools/**'
+      - 'nano-server/.dockerignore'
+  workflow_dispatch:
+
+# A new push to a pull request cancels that pull request's older runs. Pushes to main always run to completion.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-windows-image.yml
+    with:
+      context: nano-server/nano-server-reactos-tools
+      build-context: nano-server
+      image: windows-nano-reactos-tools
+
+  source:
+    # The hashes repeat the pins in shared-tools/scripts/Fetch-Reactos.ps1 and SOURCE.md. Change all three together.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download the pinned ReactOS files
+        run: |
+          mkdir out
+          curl -fsSL -o out/reactos-0.4.17-dev-1340-gfaa2d03-src.tar.gz \
+            https://github.com/reactos/reactos/archive/faa2d0325a880c8ef56bad1e52e7288176ef9975.tar.gz
+          curl -fsSL -o out/reactos-bootcd-0.4.17-dev-1340-gfaa2d03-x64-msvc-win-dbg.7z \
+            https://iso.reactos.org/bootcd/reactos-bootcd-0.4.17-dev-1340-gfaa2d03-x64-msvc-win-dbg.7z
+
+      - name: Check the SHA-256 pins
+        run: |
+          echo "b03a9e90a1b1d4ee12ea8076a9533bd742f350234fceed9d87bbe0e23389a90a  out/reactos-0.4.17-dev-1340-gfaa2d03-src.tar.gz" | sha256sum -c -
+          echo "37f8642188a949a109000c96522407ce7b515658b804569f717ac95e7051193b  out/reactos-bootcd-0.4.17-dev-1340-gfaa2d03-x64-msvc-win-dbg.7z" | sha256sum -c -
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reactos-release-files
+          path: out/
+          if-no-files-found: error
+          retention-days: 90
+
+  release:
+    # The release is the deploy step for the pinned ReactOS build. It exists because iso.reactos.org purges old nightlies.
+    needs: [build, source]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: reactos-0.4.17-dev-1340-gfaa2d03
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: reactos-release-files
+          path: out
+
+      - name: Create the release unless it already exists
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists"
+            exit 0
+          fi
+          gh release create "$TAG" out/* \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --notes "Pinned ReactOS 0.4.17 nightly $TAG: the source archive for commit faa2d0325a880c8ef56bad1e52e7288176ef9975 and the x64 MSVC boot CD. Used by windows-nano-reactos-tools and windows-nano-combined-tools; see their SOURCE.md files."

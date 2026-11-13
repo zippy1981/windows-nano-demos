@@ -1,0 +1,12 @@
+# Wine x86_64 PE programs the fetch stage extracts, one file name per line.
+# Candidates for tool-sources.txt entries with source "wine". Read by fetch-wine.ps1.
+# Only tools nanoserver lacks. Never core DLLs, never a module with a unixlib.
+find.exe
+fc.exe
+where.exe
+whoami.exe
+tasklist.exe
+taskkill.exe
+start.exe
+cabarc.exe
+fsutil.exe

@@ -1,0 +1,34 @@
+# Which implementation of each tool this image ships: <tool>=<source>.
+# Sources: wine (Wine 11.0 PE programs, unmodified), reactos (ReactOS nightly, shim-patched),
+# servercore (copied from the Server Core stage of the same Windows version).
+# Switch a tool by changing its source here and rebuilding. The new source must have fetched
+# the tool: see wine-tools.txt and reactos-tools.txt for the candidate lists.
+# Overlaps default to Wine: it needs no shim or patching and worked unmodified in its prototype.
+find.exe=wine
+fc.exe=wine
+where.exe=wine
+whoami.exe=wine
+tasklist.exe=wine
+taskkill.exe=wine
+fsutil.exe=wine
+# Wine-only in this set.
+start.exe=wine
+cabarc.exe=wine
+# ReactOS-only in this set.
+more.com=reactos
+tree.com=reactos
+comp.exe=reactos
+chcp.com=reactos
+mode.com=reactos
+help.exe=reactos
+replace.exe=reactos
+doskey.exe=reactos
+cacls.exe=reactos
+nslookup.exe=reactos
+whois.exe=reactos
+ftp.exe=reactos
+# Neither Wine (stub) nor ReactOS (error 234 on -hashfile) certutil works, and Server Core's
+# certutil.exe imports NTDSAPI.dll and WLDAP32.dll, which nanoserver lacks. certoc.exe from
+# Server Core only imports DLLs nanoserver has, and `certoc -addstore root <file>` is the
+# documented way to add a certificate on nanoserver.
+certoc.exe=servercore

@@ -1,0 +1,89 @@
+# Builds and tests windows-nano-wine-tools for every Windows version through the shared workflow (ADR 0009). The
+# Dockerfile downloads the Wine programs and their source tarball itself. The two Linux jobs only compare WineHQ's
+# binaries with a build from the source tarball (option C in plans/wine-binaries.md), for information.
+name: Wine tools container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nano-server/nano-server-wine-tools/**'
+      - '.github/workflows/wine-tools-container.yml'
+      - '.github/workflows/build-windows-image.yml'
+      - 'nano-server/shared-tools/**'
+      - 'nano-server/.dockerignore'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'nano-server/nano-server-wine-tools/**'
+      - '.github/workflows/wine-tools-container.yml'
+      - '.github/workflows/build-windows-image.yml'
+      - 'nano-server/shared-tools/**'
+      - 'nano-server/.dockerignore'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels that pull request's older runs. Pushes to main always run to completion.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-windows-image.yml
+    with:
+      context: nano-server/nano-server-wine-tools
+      build-context: nano-server
+      image: windows-nano-wine-tools
+
+  extract-wine:
+    # Option A in plans/wine-binaries.md on Linux: the same PE programs, pulled out of WineHQ's .deb with dpkg-deb
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Extract Wine PE programs
+        run: bash nano-server/nano-server-wine-tools/extract-wine.sh out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wine-pe-11.0
+          path: out/
+          if-no-files-found: error
+          retention-days: 7
+
+  build-from-source:
+    # Informational: build the same programs from the wine-11.0 tarball and compare their import tables with the
+    # WineHQ binaries. The image still ships the WineHQ binaries and the tarball.
+    needs: extract-wine
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wine-pe-11.0
+          path: out
+
+      - name: Install the cross compiler
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q gcc gcc-mingw-w64-x86-64 make flex bison perl curl xz-utils binutils-mingw-w64-x86-64
+
+      - name: Build the listed programs from source
+        run: bash nano-server/nano-server-wine-tools/build-wine-from-source.sh out-src
+
+      - name: Compare import tables with the WineHQ binaries
+        run: bash nano-server/nano-server-wine-tools/compare-imports.sh out out-src | tee out-src/compare-imports.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wine-pe-11.0-from-source
+          path: out-src/
+          if-no-files-found: warn
+          retention-days: 7

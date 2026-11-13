@@ -5,6 +5,9 @@ Runs PSScriptAnalyzer with the repo's settings over every PowerShell file tracke
 Uses PSScriptAnalyzerSettings.psd1, including the custom rules that require [CmdletBinding()] and comment-based help
 on every script. Only files tracked by git are analyzed, so .venv and worktrees are skipped. Prints one line per
 finding (a GitHub annotation when run in Actions) and fails if there are any.
+
+Each file is also parsed, and a parse error is a finding (rule ParseError). PSScriptAnalyzer doesn't report parse
+errors, so without this a script that can't run at all, such as one with "$name:" in a string, passes the lint.
 .PARAMETER Path
 The repository root. Defaults to the parent of this script's folder.
 .EXAMPLE
@@ -30,6 +33,17 @@ try {
                 Where-Object { $_ -notmatch '(^|[\\/])\.' })
     }
     $results = @(foreach ($file in $files) {
+            $parseErrors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file).Path, [ref]$null, [ref]$parseErrors)
+            foreach ($parseError in $parseErrors) {
+                [pscustomobject]@{
+                    ScriptPath = (Resolve-Path $file).Path
+                    Line = $parseError.Extent.StartLineNumber
+                    Column = $parseError.Extent.StartColumnNumber
+                    RuleName = 'ParseError'
+                    Message = $parseError.Message
+                }
+            }
             Invoke-ScriptAnalyzer -Path $file -Settings ./PSScriptAnalyzerSettings.psd1
         })
 }

@@ -1,0 +1,22 @@
+# ReactOS x64 PE programs the fetch stage extracts and patches, one file name per line.
+# Candidates for tool-sources.txt entries with source "reactos". Read by shared-tools/scripts/Fetch-Reactos.ps1.
+# Only tools nanoserver lacks. Never ReactOS core DLLs, never cmd.exe, never a GUI program.
+find.exe
+more.com
+fc.exe
+where.exe
+whoami.exe
+tree.com
+comp.exe
+tasklist.exe
+taskkill.exe
+chcp.com
+mode.com
+help.exe
+replace.exe
+doskey.exe
+cacls.exe
+fsutil.exe
+nslookup.exe
+whois.exe
+ftp.exe

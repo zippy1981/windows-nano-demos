@@ -30,7 +30,7 @@ function Assert-True {
     Write-Output "ok: $What"
 }
 
-$dir = Join-Path ([IO.Path]::GetTempPath()) "odbc-govdata-$PID"
+$dir = Join-Path $HOME "odbc-govdata-$PID"
 New-Item -ItemType Directory -Path $dir | Out-Null
 try {
     $database = Join-Path $dir 'atomic_database.db'
@@ -62,7 +62,7 @@ try {
     }
 }
 finally {
-    Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue
+    try { Remove-Item -Recurse -Force $dir } catch { Write-Warning "Cleanup of $dir failed: $_" }
 }
 
 Write-Output 'GOVDATA SMOKE TEST PASSED'

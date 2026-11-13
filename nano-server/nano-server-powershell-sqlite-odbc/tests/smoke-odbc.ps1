@@ -66,7 +66,7 @@ finally {
 }
 
 # A file database: write in one connection, read the rows back in a new one.
-$dir = Join-Path ([IO.Path]::GetTempPath()) "odbc-smoke-$PID"
+$dir = Join-Path $HOME "odbc-smoke-$PID"
 New-Item -ItemType Directory -Path $dir | Out-Null
 try {
     $database = Join-Path $dir 'smoke.db'
@@ -91,7 +91,7 @@ try {
     }
 }
 finally {
-    Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue
+    try { Remove-Item -Recurse -Force $dir } catch { Write-Warning "Cleanup of $dir failed: $_" }
 }
 
 Write-Output 'SMOKE TEST PASSED'

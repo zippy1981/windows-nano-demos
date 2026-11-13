@@ -59,6 +59,8 @@ SOURCES: dict[str, tuple[str, str, str]] = {
     "RUST_VERSION": ("github", "rust-lang/rust", ""),
     "OPENSSH_VERSION": ("github", "PowerShell/Win32-OpenSSH", ""),
     "FAR_VERSION": ("far", "", "stable build; set FAR_BUILD and FAR_DATE as shown"),
+    "VIM_VERSION": ("github", "vim/vim-win32-installer", "also update VIM_DIR when the minor version changes"),
+    "NEOVIM_VERSION": ("github", "neovim/neovim", ""),
 }
 
 Fetch = Callable[[str, dict[str, str]], bytes]

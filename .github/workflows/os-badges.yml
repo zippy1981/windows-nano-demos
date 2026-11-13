@@ -13,10 +13,12 @@ on:
       - GitHub runner container
       - Go container
       - MySQL container
+      - Neovim container
       - PHP container
       - PowerShell container
       - Rust container
       - SSH server container
+      - Vim container
     types: [completed]
     branches: [main]
   workflow_dispatch:

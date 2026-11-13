@@ -52,11 +52,16 @@ FROM ${BASE_IMAGE}
 COPY --from=fetch C:/odbc/ C:/Windows/System32/
 COPY --from=fetch ["C:/package", "C:/Program Files/Stackable/ODBC"]
 
-# Register the driver system-wide (HKLM), the way the release's install.bat does it. Registering needs
-# an administrator; the smoke test checks the HKLM entry and connects as ContainerUser, so a per-user
-# registration would fail it. odbcconf.exe is one of the files copied in above.
+# Register the driver system-wide (HKLM), with the same entries the release's install.bat writes through
+# odbcconf's INSTALLDRIVER. Registering needs an administrator; the smoke test checks the HKLM entry and
+# connects as ContainerUser, so a per-user registration would fail it. The entries are written with
+# reg.exe directly: odbcconf.exe (copied in above, and kept in the image for DSN work) exits with -10 in
+# this stage on every Windows version in CI, before printing anything.
 USER ContainerAdministrator
-RUN odbcconf.exe /A {INSTALLDRIVER "stackable_odbc_sqlite|Driver=%ProgramFiles%\Stackable\ODBC\stackable_odbc_sqlite.dll|Setup=%ProgramFiles%\Stackable\ODBC\stackable_odbc_sqlite.dll|"} && \
+RUN reg add "HKLM\SOFTWARE\ODBC\ODBCINST.INI\stackable_odbc_sqlite" /v Driver /t REG_SZ /d "C:\Program Files\Stackable\ODBC\stackable_odbc_sqlite.dll" /f && \
+    reg add "HKLM\SOFTWARE\ODBC\ODBCINST.INI\stackable_odbc_sqlite" /v Setup /t REG_SZ /d "C:\Program Files\Stackable\ODBC\stackable_odbc_sqlite.dll" /f && \
+    reg add "HKLM\SOFTWARE\ODBC\ODBCINST.INI\stackable_odbc_sqlite" /v UsageCount /t REG_DWORD /d 1 /f && \
+    reg add "HKLM\SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers" /v stackable_odbc_sqlite /t REG_SZ /d Installed /f && \
     reg query "HKLM\SOFTWARE\ODBC\ODBCINST.INI\stackable_odbc_sqlite" /v Driver
 USER ContainerUser
 

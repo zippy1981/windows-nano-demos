@@ -35,13 +35,13 @@ function Invoke-Image {
     return $out
 }
 
-$driver = Invoke-Image pwsh -NoLogo -NoProfile -Command "Test-Path 'C:\Program Files\Stackable\ODBC\stackable_odbc_sqlite.dll'"
+$driver = Invoke-Image @('pwsh', '-NoLogo', '-NoProfile', '-Command', "Test-Path 'C:\Program Files\Stackable\ODBC\stackable_odbc_sqlite.dll'")
 if ($driver -notmatch 'True') { throw 'stackable_odbc_sqlite.dll is not installed' }
 Write-Host 'ok: driver DLL is installed'
 
 # A system-wide registration lives in HKLM, where ContainerUser (the user that just ran the check
 # above, and the image's default user) can see it. A per-user one would be under HKCU instead.
-$registered = Invoke-Image pwsh -NoLogo -NoProfile -Command "Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\ODBC\ODBCINST.INI\stackable_odbc_sqlite' -Name Driver"
+$registered = Invoke-Image @('pwsh', '-NoLogo', '-NoProfile', '-Command', "Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\ODBC\ODBCINST.INI\stackable_odbc_sqlite' -Name Driver")
 if ($registered -notmatch 'stackable_odbc_sqlite\.dll') { throw "the driver is not registered system-wide: $registered" }
 Write-Host "ok: driver is registered system-wide ($($registered.Trim()))"
 

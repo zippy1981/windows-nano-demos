@@ -214,6 +214,22 @@ class TestReusableWorkflow:
         ]
         assert image_builds and all("WINDOWS_VERSION=${{ matrix.windows-version }}" in b for b in image_builds)
 
+    def test_build_isolation_comes_only_from_the_repository_variable(self, reusable_job: dict) -> None:
+        # ADR 0020: which Windows versions a host can build without Hyper-V is a fact about the host, so the
+        # isolation is a repository variable. Unset, the build has no --isolation and uses the daemon's default.
+        expression = normalize_expression(reusable_job["env"]["BUILD_ISOLATION"])
+        assert expression == (
+            "vars.WINDOWS_BUILD_ISOLATION && fromJSON(vars.WINDOWS_BUILD_ISOLATION)[matrix.windows-version] || ''"
+        )
+        (build,) = [s["run"] for s in reusable_job["steps"] if s.get("working-directory") == "${{ inputs.context }}"]
+        assert '"--isolation=$env:BUILD_ISOLATION"' in build
+        assert "if ($env:BUILD_ISOLATION) {" in build, "no --isolation unless the variable names this version"
+        assert "-notin 'process', 'hyperv'" in build, "reject anything but process and hyperv"
+        isolation_lines = [
+            line for s in reusable_job["steps"] for line in s.get("run", "").splitlines() if "--isolation" in line
+        ]
+        assert len(isolation_lines) == 1, f"only the image build takes an isolation: {isolation_lines}"
+
     def test_runs_the_image_smoke_test(self, reusable_job: dict) -> None:
         assert any(SMOKE_TEST in s.get("run", "") for s in reusable_job["steps"])
 

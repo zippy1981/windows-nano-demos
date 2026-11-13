@@ -21,13 +21,14 @@ ARG FREEPASCAL_VERSION=3.2.2
 FROM mcr.microsoft.com/windows/servercore:ltsc${WINDOWS_VERSION}-amd64 AS build
 SHELL ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "$ErrorActionPreference = 'Stop';"]
 
+ARG WINDOWS_VERSION
 ARG FREEPASCAL_VERSION
 # SHA-256 of fpc-<version>.x86_64-win64.tar. freepascal.org publishes no checksum, so this pins the file the image was
 # tested with. Set with --build-arg FREEPASCAL_SHA256=<hash> whenever FREEPASCAL_VERSION changes.
 ARG FREEPASCAL_SHA256=10D776CF6E86DCCAB482B81285DA58A9CC8E0AA9C0558B78D3BF08D3981B4924
 
 COPY Install-FreePascal.ps1 C:/build/Install-FreePascal.ps1
-RUN C:\build\Install-FreePascal.ps1 -Version $env:FREEPASCAL_VERSION -Sha256 $env:FREEPASCAL_SHA256 -Destination C:\fpc
+RUN C:\build\Install-FreePascal.ps1 -Version $env:FREEPASCAL_VERSION -Sha256 $env:FREEPASCAL_SHA256 -Destination C:\fpc -WindowsVersion $env:WINDOWS_VERSION
 
 FROM ${BASE_IMAGE}
 

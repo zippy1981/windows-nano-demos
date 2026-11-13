@@ -15,14 +15,19 @@ Three things in the release can't run on Nano Server, and each is handled here:
   Server's kernel32 doesn't export, so nothing starts (0xC0000139). The import comes from the fpintres unit. Its
   name is replaced, in the programs and in that unit, with EnumResourceTypesW, which Nano Server has and which
   takes the same arguments. Only the EnumResourceTypes function of the resource units ever calls it.
+  Nano Server ltsc2019 also lacks EnumResourceNamesA, which the same unit imports, so there that name is replaced
+  with EnumResourceNamesW in the same way.
 - fppkg and fpcmkcfg import shell32's SHFileOperation, and importtl imports ole32's GetErrorInfo. Nano Server
-  has neither, so those three are left out.
+  has neither, so those three are left out. On ltsc2019 the fp IDE is left out too: it imports user32's
+  VkKeyScanExA, which only that version lacks.
 .EXAMPLE
-./Install-FreePascal.ps1 -Version 3.2.2 -Sha256 10D7... -Destination C:\fpc
+./Install-FreePascal.ps1 -Version 3.2.2 -Sha256 10D7... -Destination C:\fpc -WindowsVersion 2025
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$Version,
+    # The Nano Server version the image is for. What is missing, and so what is patched, differs for 2019.
+    [Parameter(Mandatory)][ValidateSet('2019', '2022', '2025')][string]$WindowsVersion,
     # SHA-256 of the release tar. The publisher lists none, so this pins the file the image was tested with.
     [Parameter(Mandatory)][string]$Sha256,
     [Parameter(Mandatory)][string]$Destination,
@@ -35,9 +40,13 @@ $target = 'x86_64-win64'
 $release = "fpc-$Version.$target"
 $url = "https://downloads.freepascal.org/fpc/dist/$Version/$target/$release.tar"
 # Programs that can't load on Nano Server even after the patch (see the description)
-$unusable = 'fppkg.exe', 'fpcmkcfg.exe', 'importtl.exe'
-$missingImport = 'EnumResourceTypesA'
-$replacementImport = 'EnumResourceTypesW'
+$unusable = @('fppkg.exe', 'fpcmkcfg.exe', 'importtl.exe')
+# Imports Nano Server lacks, and the export with the same arguments that takes each one's place
+$imports = [ordered]@{ 'EnumResourceTypesA' = 'EnumResourceTypesW' }
+if ($WindowsVersion -eq '2019') {
+    $unusable += 'fp.exe'
+    $imports['EnumResourceNamesA'] = 'EnumResourceNamesW'
+}
 
 function Invoke-Tar {
     param([string]$Archive, [string]$Into)
@@ -100,16 +109,19 @@ Remove-Item (Join-Path $bin '*.manifest')
 "Left out $($removed.Count) programs Nano Server can't run: $($removed -join ', ')"
 
 $programs = @(Get-ChildItem $bin -Filter '*.exe')
-foreach ($program in $programs) {
-    if (-not (Edit-ImportName $program.FullName $missingImport $replacementImport)) {
-        throw "$($program.Name) doesn't import $missingImport; the release has changed, so review this script"
-    }
-}
 $unitFiles = @(Get-ChildItem (Join-Path $units 'rtl') -Filter '*fpintres*')
-$patched = 0
-foreach ($file in $unitFiles) { $patched += Edit-ImportName $file.FullName $missingImport $replacementImport }
-if (-not $patched) { throw "the fpintres unit doesn't import $missingImport; the release has changed, so review this script" }
-"Replaced $missingImport with $replacementImport in $($programs.Count) programs and $($unitFiles.Count) fpintres files"
+foreach ($missing in $imports.Keys) {
+    $replacement = $imports[$missing]
+    foreach ($program in $programs) {
+        if (-not (Edit-ImportName $program.FullName $missing $replacement)) {
+            throw "$($program.Name) doesn't import $missing; the release has changed, so review this script"
+        }
+    }
+    $patched = 0
+    foreach ($file in $unitFiles) { $patched += Edit-ImportName $file.FullName $missing $replacement }
+    if (-not $patched) { throw "the fpintres unit doesn't import $missing; the release has changed, so review this script" }
+    "Replaced $missing with $replacement in $($programs.Count) programs and $($unitFiles.Count) fpintres files"
+}
 
 # The compiler reads fpc.cfg from its own folder. fpcmkcfg, which normally writes it, can't run on Nano Server.
 $config = @(

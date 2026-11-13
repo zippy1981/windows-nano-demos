@@ -24,12 +24,13 @@ The stock release can't start on Nano Server, and neither can the programs it bu
 `Install-FreePascal.ps1` runs in a Server Core build stage. It downloads the release, checks its SHA-256, and changes three things.
 
 - **One import name, in every program and in the `fpintres` unit.** Every program Free Pascal builds imports `EnumResourceTypesA` from `kernel32.dll`, and so does the compiler, which is built with itself. Nano Server's `kernel32.dll` doesn't export it, so nothing starts: the exit code is `-1073741511` (`0xC0000139`, entry point not found). The script replaces the name with `EnumResourceTypesW`, which Nano Server has and which takes the same arguments. It patches the unit as well as the programs, so what you compile in the image starts on Nano Server too.
+- **On ltsc2019, a second import name.** That version's `kernel32.dll` also lacks `EnumResourceNamesA`, which the same unit imports. There it becomes `EnumResourceNamesW`. The `fp` IDE is left out on ltsc2019 as well, because it imports `VkKeyScanExA` from `user32.dll`, which only that version lacks.
 - **The 32-bit GNU tools are left out.** `as`, `ld`, `make`, `strip`, `windres` and the rest of the release's binutils are 32-bit, and Nano Server can't run 32-bit programs. The compiler doesn't need them on this target: it assembles and links internally.
 - **Three tools are left out:** `fppkg` and `fpcmkcfg` need `SHFileOperation` from `shell32.dll`, and `importtl` needs `GetErrorInfo` from `ole32.dll`. Nano Server has neither function. `fpc.cfg`, which `fpcmkcfg` would write, is written by the script.
 
 What that costs:
 
-- **`EnumResourceTypes` gets wide strings.** The function of that name in the resource units is the only caller of the patched import. Its callback expects ANSI names of resource types and now gets UTF-16 ones. Numbered resource types are unaffected.
+- **`EnumResourceTypes` gets wide strings.** The function of that name in the resource units is the only caller of the patched import. Its callback expects ANSI names of resource types and now gets UTF-16 ones. Numbered resource types are unaffected. On ltsc2019 the same goes for `EnumResourceNames`.
 - **No `make`,** so nothing that builds through makefiles works, including building Free Pascal itself.
 - **No `windres`,** so `.rc` files can't be compiled.
 - **No package manager.** Every package of the release is already installed.

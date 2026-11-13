@@ -36,7 +36,8 @@ foreach ($tool in $tools) {
     $out = docker run --rm $Image "$tool 2>&1"
     $code = $LASTEXITCODE
     "$tool -> exit $code, $(@($out)[0])" | Write-Host
-    if ($code -lt 0 -or $code -gt 255 -or -not $out) { throw "$tool did not start: $code" }
+    # Some print nothing for these arguments on ltsc2019, so only the exit code is checked
+    if ($code -lt 0 -or $code -gt 255) { throw "$tool did not start: $code" }
 }
 
 # Nothing 32-bit and none of the three tools that can't load were left behind

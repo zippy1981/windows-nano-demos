@@ -22,16 +22,19 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host "Govdata smoke testing $Image (downloads about 79 MB inside the container)"
 
+# docker cp cannot touch a running Hyper-V container, so the container is created (not started),
+# the scripts are copied in, and only then is it started with the test as its command.
 $name = "powershell-sqlite-odbc-govdata-$([guid]::NewGuid().ToString('n').Substring(0, 8))"
 try {
-    docker run -d --name $name $Image pwsh -NoLogo -NoProfile -Command 'Start-Sleep -Seconds 3600' | Out-Null
-    if ($LASTEXITCODE) { throw 'starting the govdata container failed' }
+    docker create --name $name $Image pwsh -NoLogo -NoProfile -File 'C:\smoke-govdata.ps1' | Out-Null
+    if ($LASTEXITCODE) { throw 'creating the govdata container failed' }
     foreach ($script in 'OdbcSqlite.ps1', 'smoke-govdata.ps1') {
         docker cp (Join-Path $PSScriptRoot "tests/$script") "${name}:C:/$script" | Out-Null
         if ($LASTEXITCODE) { throw "docker cp of $script failed" }
     }
-    docker exec $name pwsh -NoLogo -NoProfile -File 'C:\smoke-govdata.ps1' | Out-Host
-    if ($LASTEXITCODE) { throw "smoke-govdata.ps1 failed: $LASTEXITCODE" }
+    docker start -a $name | Out-Host
+    $code = docker inspect -f '{{.State.ExitCode}}' $name
+    if ($code -ne '0') { throw "smoke-govdata.ps1 failed: container exit code $code" }
 }
 finally {
     docker rm -f $name 2>$null | Out-Null

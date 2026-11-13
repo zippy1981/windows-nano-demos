@@ -8,8 +8,8 @@ throwaway container. That script does real database work over ODBC: create, inse
 and read back, once in an in-memory database and once in a file database that a second connection
 re-opens. Throws on the first failure.
 
-The container is started once and the scripts are copied in with docker cp, because the CI runners
-are containers themselves and cannot bind-mount the workspace.
+The scripts are copied in with docker cp, because the CI runners are containers themselves and
+cannot bind-mount the workspace.
 .PARAMETER Image
 The image to test.
 .EXAMPLE
@@ -49,16 +49,19 @@ $cmd = docker image inspect $Image --format '{{json .Config.Cmd}}'
 if ($cmd -ne '["pwsh"]') { throw "unexpected default CMD: $cmd" }
 Write-Host 'ok: default command is pwsh'
 
+# docker cp cannot touch a running Hyper-V container, so the container is created (not started),
+# the scripts are copied in, and only then is it started with the test as its command.
 $name = "powershell-sqlite-odbc-smoke-$([guid]::NewGuid().ToString('n').Substring(0, 8))"
 try {
-    docker run -d --name $name $Image pwsh -NoLogo -NoProfile -Command 'Start-Sleep -Seconds 900' | Out-Null
-    if ($LASTEXITCODE) { throw 'starting the smoke container failed' }
+    docker create --name $name $Image pwsh -NoLogo -NoProfile -File 'C:\smoke-odbc.ps1' | Out-Null
+    if ($LASTEXITCODE) { throw 'creating the smoke container failed' }
     foreach ($script in 'OdbcSqlite.ps1', 'smoke-odbc.ps1') {
         docker cp (Join-Path $PSScriptRoot "tests/$script") "${name}:C:/$script" | Out-Null
         if ($LASTEXITCODE) { throw "docker cp of $script failed" }
     }
-    docker exec $name pwsh -NoLogo -NoProfile -File 'C:\smoke-odbc.ps1' | Out-Host
-    if ($LASTEXITCODE) { throw "smoke-odbc.ps1 failed: $LASTEXITCODE" }
+    docker start -a $name | Out-Host
+    $code = docker inspect -f '{{.State.ExitCode}}' $name
+    if ($code -ne '0') { throw "smoke-odbc.ps1 failed: container exit code $code" }
 }
 finally {
     docker rm -f $name 2>$null | Out-Null

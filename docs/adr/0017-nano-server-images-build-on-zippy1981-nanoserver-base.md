@@ -26,10 +26,10 @@ Every Nano Server image here built on `mcr.microsoft.com/windows/nanoserver` and
 - Three Server Core stages, two PowerShell downloads, a Microsoft Edit download and the `where.exe` copies are gone. The runtime DLLs are now pinned and verified, where `aka.ms` used to serve whatever was current.
 - `tar` in every Nano Server image is bsdtar, which reads zstd and 7z. It shares libarchive's known gaps: Deflate64 zips ([windows-nano-baseimages#7](https://github.com/zippy1981/windows-nano-baseimages/issues/7)) and zips read from a pipe ([#8](https://github.com/zippy1981/windows-nano-baseimages/issues/8)). `tests/test_no_tar_from_pipe.py` forbids the second.
 - These images now depend on another repository's releases. A broken nanoserver-base tag breaks their builds until it is fixed there, or `BASE_IMAGE` is pinned to an older digest.
-- A base change takes two hops to arrive: Microsoft to nanoserver-base, then nanoserver-base to these images. #77 can still add a cross-repo dispatch, if the polling delay matters.
+- A base change takes two hops to arrive: Microsoft to nanoserver-base, then nanoserver-base to these images. Since [ADR 0018](0018-nanoserver-base-publishes-dispatch-the-image-refresh.md), publishing nanoserver-base dispatches the refresh, so the second hop takes minutes.
 
 ## Alternatives considered
 
 - **Keep the MCR base and copy what each image needs:** the duplication this removes, with unpinned runtime downloads.
 - **Rebuild on a timer instead of the base digest:** #71 proposed this as a stopgap. Reading Docker Hub digests reuses code `refresh_matrix.py` already has for the published labels, so it keeps ADR 0004's rule and doesn't rebuild when nothing changed.
-- **A cross-repo dispatch from windows-nano-baseimages:** needs a token with write access to this repository. Deferred to #77.
+- **A cross-repo dispatch from windows-nano-baseimages:** needs a token with write access to this repository. Deferred to #77, and adopted in [ADR 0018](0018-nanoserver-base-publishes-dispatch-the-image-refresh.md) alongside the timer.

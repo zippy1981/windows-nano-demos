@@ -334,6 +334,12 @@ def test_refresh_runs_on_push_to_main_and_on_a_schedule() -> None:
     assert triggers.get("schedule"), f"{REFRESH_WORKFLOW} must keep its schedule for base image updates"
 
 
+def test_refresh_runs_when_nanoserver_base_is_published() -> None:
+    # ADR 0018: windows-nano-baseimages' nanoserver-base.yml sends this event type, so renaming it breaks the sender
+    triggers = workflows()[REFRESH_WORKFLOW]["on"]
+    assert (triggers.get("repository_dispatch") or {}).get("types") == ["nanoserver-base-published"]
+
+
 class TestVariantPublishing:
     def test_shared_workflow_takes_tag_prefix_and_also_plain_tags(self) -> None:
         inputs = workflows()[REUSABLE_WORKFLOW]["on"]["workflow_call"]["inputs"]

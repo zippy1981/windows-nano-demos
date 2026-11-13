@@ -10,12 +10,20 @@ The runners register with --replace, so they take over the names of the runners 
 ./ci/runner-fleet/Start-RunnerFleet.ps1
 .EXAMPLE
 ./ci/runner-fleet/Start-RunnerFleet.ps1 -Count 2 -RunnerImage windows-nano-gh-runner:2025
+.EXAMPLE
+./ci/runner-fleet/Start-RunnerFleet.ps1 -Count 2 -RunnersPerContainer 3
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string]$Repo = 'zippy1981/windows-nano-demos',
     [ValidateRange(1, 5)][int]$Count = 5,
     [string]$NamePrefix = $env:COMPUTERNAME,
+    # Runners in each container. A runner takes one job at a time, so the fleet runs Count x RunnersPerContainer
+    # jobs at once. The second and later runners of a container register as <name>-2, <name>-3 ...
+    [ValidateRange(1, 16)][int]$RunnersPerContainer = 1,
+    [string]$Labels = 'nanoserver,docker',
+    # The runners don't update themselves: the image's pinned runner version is the one that runs.
+    [switch]$DisableUpdate,
     [string]$RunnerImage = 'windows-nano-gh-runner:2022',
     [string]$CacheImage = 'windows-nano-artifact-cache:2025',
     [string]$CacheRoot = 'C:\ProgramData\windows-nano-demos\artifact-cache',
@@ -43,6 +51,9 @@ foreach ($image in $RunnerImage, $CacheImage) {
 $env:RUNNER_REPO = $Repo
 $env:RUNNER_NAME_PREFIX = $NamePrefix
 $env:RUNNER_IMAGE = $RunnerImage
+$env:RUNNERS_PER_CONTAINER = $RunnersPerContainer
+$env:RUNNER_LABELS = $Labels
+$env:RUNNER_DISABLE_UPDATE = $DisableUpdate ? '1' : ''
 $env:CACHE_IMAGE = $CacheImage
 $env:CACHE_ROOT = $CacheRoot
 

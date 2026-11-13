@@ -30,6 +30,31 @@ The CI test uses `172.31.251.0/24` and a `ci-compose-<run id>` project, so it ne
 - Compose names the containers `windows-nano-ci-runner1-1` and so on, so they never clash with the old `DEARING-HP-Z-nano*` containers.
 - Each runner starts only after the cache is healthy. A runner that is recreated, for example after an image change, registers again with the token `Start-RunnerFleet.ps1` supplies. Run that script, not raw `compose up`.
 
+## Settings
+
+`Start-RunnerFleet.ps1` and `Start-RepoRunners.ps1` take these, and pass them to Compose in the variable named:
+
+| Parameter | Default | Variable | What it does |
+| --- | --- | --- | --- |
+| `-Count` | 5 (fleet), 2 (other repositories) | none | Runner containers to start, 1 to 5 |
+| `-RunnersPerContainer` | 1 | `RUNNERS_PER_CONTAINER` | Runners in each container, 1 to 16 ([ADR 0019](../../docs/adr/0019-a-runner-container-can-run-several-runners.md)) |
+| `-Labels` | `nanoserver,docker` | `RUNNER_LABELS` | Extra runner labels. The workflows need `docker`. |
+| `-DisableUpdate` | off | `RUNNER_DISABLE_UPDATE` | The runners don't update themselves |
+| `-RunnerImage` | `windows-nano-gh-runner:2022` | `RUNNER_IMAGE` | Runner image |
+| `-NamePrefix` | `<COMPUTERNAME>` | `RUNNER_NAME_PREFIX` | Start of every registration name |
+
+A runner takes one job at a time, so the fleet runs `-Count` × `-RunnersPerContainer` jobs at once. Two containers of three runners take six jobs:
+
+```powershell
+./ci/runner-fleet/Start-RunnerFleet.ps1 -Count 2 -RunnersPerContainer 3
+```
+
+- **Names.** A container's first runner keeps its name (`<COMPUTERNAME>-nano2`). The others add a number: `<COMPUTERNAME>-nano2-2`, `<COMPUTERNAME>-nano2-3`.
+- **Changing a setting recreates the containers,** which ends any job running in them. Drain them first with `Set-RunnerCount.ps1 -Count 0`, then run the start script.
+- **Containers the new `-Count` leaves out keep running.** Stop them with `Set-RunnerCount.ps1`.
+- **Runners that no longer exist stay registered,** offline. Remove them under the repository's **Settings → Actions → Runners**.
+- **More runners don't make the host faster.** Every job builds on the one docker daemon, with `--memory 4g` for each build. Choose a total the host's cores and memory can carry.
+
 ## Runners for other repositories
 
 A runner on a personal account serves exactly one repository, so the fleet's five runners only take `windows-nano-demos` jobs. To give another repository its own runners on the same host, network and cache, start them from `compose.runners.yaml` with `Start-RepoRunners.ps1`:
@@ -41,7 +66,7 @@ A runner on a personal account serves exactly one repository, so the fleet's fiv
 - Each repository gets its own compose project, named after the repository (`windows-nano-baseimages`), so `compose down` on one never touches another or the fleet.
 - The runners join the fleet's `windows-nano-ci` network and get the same `ARTIFACT_CACHE_IP` and `ARTIFACT_CACHE_NETWORK`. The fleet must be running first; the script checks for the network.
 - They don't wait for the cache's health, because the cache belongs to another project. `restart: unless-stopped` brings them back after a reboot either way.
-- `-Count` (1–5, default 2), `-NamePrefix`, `-RunnerImage` and `-WhatIf` work as in `Start-RunnerFleet.ps1`.
+- `-Count` (1–5, default 2), `-NamePrefix`, `-RunnerImage`, `-WhatIf` and the other [settings](#settings) work as in `Start-RunnerFleet.ps1`.
 - To remove them for good: `& (./ci/runner-fleet/Install-Compose.ps1) -p windows-nano-baseimages down`. Then remove the runners under the repository's **Settings → Actions → Runners**. To stop them for a while, see the next section.
 
 ## Fewer runners for a while
@@ -54,7 +79,8 @@ A runner on a personal account serves exactly one repository, so the fleet's fiv
 ./ci/runner-fleet/Set-RunnerCount.ps1 -Count 5           # back to full size
 ```
 
-- **Stopping waits for jobs.** Runners above `-Count` are stopped through `Stop-ActionRunners.ps1 -Container`, which waits until GitHub reports each runner idle in the repository it serves. `-DrainMinutes` (default 60) and `-Force` work the same way as there.
+- **It counts containers.** `-Count 1` keeps one container in each project, with however many runners that container has.
+- **Stopping waits for jobs.** Runners above `-Count` are stopped through `Stop-ActionRunners.ps1 -Container`, which waits until GitHub reports every runner in the container idle in the repository it serves. `-DrainMinutes` (default 60) and `-Force` work the same way as there.
 - **Starting needs no token.** Stopped runners are still registered with GitHub. They show as offline while stopped, and `docker start` brings them back.
 - **Stopped stays stopped,** through Docker and host restarts (`restart: unless-stopped`). The exception is running `Start-RunnerFleet.ps1` or `Start-RepoRunners.ps1`, which starts every runner it manages.
 - **`-Project windows-nano-ci`** scales only the fleet, and **`-Project windows-nano-baseimages`** only that repository's runners.

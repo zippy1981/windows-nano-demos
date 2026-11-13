@@ -251,3 +251,66 @@ def test_set_runner_count_stops_through_the_draining_stop_script() -> None:
 
 def test_set_runner_count_points_at_the_fleet_start_script_for_the_fleet_project() -> None:
     assert f"'{default(FLEET['name'])}'" in SCALE_SCRIPT
+
+
+# --- Several runners in one container (ADR 0019): the runner image's RUNNER_COUNT, set by the start scripts ---
+
+RUNNER_IMAGE_DIR = FLEET_DIR.parent.parent / "nano-server" / "nano-server-gh-runner"
+ENTRYPOINT = (RUNNER_IMAGE_DIR / "start.ps1").read_text(encoding="utf-8")
+STOP_SCRIPT = (FLEET_DIR / "Stop-ActionRunners.ps1").read_text(encoding="utf-8")
+START_SCRIPTS = ["Start-RunnerFleet.ps1", "Start-RepoRunners.ps1"]
+# Compose variable -> the runner container's environment variable it sets, and the value when it is unset
+RUNNER_SETTINGS = [
+    ("RUNNERS_PER_CONTAINER", "RUNNER_COUNT", "1"),
+    ("RUNNER_LABELS", "RUNNER_LABELS", "nanoserver,docker"),
+    ("RUNNER_DISABLE_UPDATE", "RUNNER_DISABLE_UPDATE", ""),
+]
+
+
+@pytest.mark.parametrize("file", ["compose.yaml", "compose.runners.yaml"])
+@pytest.mark.parametrize("runner", RUNNERS)
+@pytest.mark.parametrize(("variable", "setting", "unset"), RUNNER_SETTINGS)
+def test_runner_setting_comes_from_the_environment(
+    file: str, runner: str, variable: str, setting: str, unset: str
+) -> None:
+    value = load_compose(file)["services"][runner]["environment"][setting]
+    assert value == f"${{{variable}:-{unset}}}", (
+        f"{file}: {runner} must read {setting} from {variable}, default '{unset}'"
+    )
+
+
+@pytest.mark.parametrize("script", START_SCRIPTS)
+@pytest.mark.parametrize("variable", [variable for variable, _, _ in RUNNER_SETTINGS])
+def test_start_script_sets_every_runner_setting(script: str, variable: str) -> None:
+    text = (FLEET_DIR / script).read_text(encoding="utf-8")
+    assert f"$env:{variable} = " in text, f"{script} must set {variable}, or a value left in the shell would be used"
+
+
+@pytest.mark.parametrize("script", START_SCRIPTS)
+def test_start_script_defaults_to_one_runner_in_each_container(script: str) -> None:
+    text = (FLEET_DIR / script).read_text(encoding="utf-8")
+    assert re.search(r"\[ValidateRange\(1, 16\)\]\[int\]\$RunnersPerContainer = 1\b", text)
+    assert _ps_default(script, "Labels") == "nanoserver,docker"
+
+
+@pytest.mark.parametrize("setting", [setting for _, setting, _ in RUNNER_SETTINGS])
+def test_entrypoint_reads_every_setting_the_compose_files_pass(setting: str) -> None:
+    assert f"$env:{setting}" in ENTRYPOINT
+
+
+def test_entrypoint_and_stop_script_agree_on_the_runner_names() -> None:
+    # start.ps1 registers runner n as <name>-<n>; Stop-ActionRunners.ps1 must wait for exactly those names
+    assert '$number -eq 1 ? $name : "$name-$number"' in ENTRYPOINT
+    assert "RUNNER_COUNT=*" in STOP_SCRIPT
+    assert '"$runnerName-$_"' in STOP_SCRIPT
+    assert "$target.RunnerNames" in STOP_SCRIPT, "a container is idle only when every runner in it is"
+
+
+def test_entrypoint_limits_match_the_start_scripts() -> None:
+    assert "$count -ge 1 -and $count -le 16" in ENTRYPOINT
+
+
+def test_entrypoint_can_print_its_plan_without_registering() -> None:
+    assert "[ValidateSet('Run', 'Plan', 'Prepare')][string]$Mode = 'Run'" in ENTRYPOINT
+    smoke = (RUNNER_IMAGE_DIR / "smoke-test.ps1").read_text(encoding="utf-8")
+    assert "-Mode Plan" in smoke and "-Mode Prepare" in smoke, "the smoke test checks the plan without a token"

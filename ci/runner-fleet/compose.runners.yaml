@@ -19,6 +19,11 @@ x-runner-env: &runner-env
   RUNNER_URL: https://github.com/${RUNNER_REPO:?set RUNNER_REPO, for example zippy1981/windows-nano-baseimages}
   RUNNER_TOKEN: ${RUNNER_TOKEN:-}
   RUNNER_LABELS: ${RUNNER_LABELS:-nanoserver,docker}
+  # Runners in each container. A runner takes one job at a time, so this is how many jobs a container runs at once
+  # (ADR 0019). The second and later runners register as <RUNNER_NAME>-2, -3 ...
+  RUNNER_COUNT: ${RUNNERS_PER_CONTAINER:-1}
+  # 1 stops the runners updating themselves, so the image's pinned runner version is the one that runs
+  RUNNER_DISABLE_UPDATE: ${RUNNER_DISABLE_UPDATE:-}
   ARTIFACT_CACHE_IP: ${CACHE_IP:-172.31.250.10}
   ARTIFACT_CACHE_NETWORK: ${FLEET_NETWORK:-windows-nano-ci}
 

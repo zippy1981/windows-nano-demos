@@ -8,7 +8,8 @@ Containers that belong to a Compose project (the runner fleet) are skipped unles
 
 For each one it reads the runner's registration name (RUNNER_NAME, or the container name) and repository
 (RUNNER_URL, or -Repo), and stops the container with docker stop once GitHub reports that runner idle in
-that repository, so no job is cut off. Runners GitHub
+that repository, so no job is cut off. A container that runs several runners (RUNNER_COUNT) is stopped
+once all of them are idle. Runners GitHub
 doesn't know count as idle. Runners still busy after -DrainMinutes are left running, and the script
 throws, unless -Force, which stops them anyway.
 
@@ -53,7 +54,12 @@ function Get-RunnerContainer([string]$NamePattern, [string]$ImagePattern, [bool]
         $runnerName = ($envVars | Where-Object { $_ -like 'RUNNER_NAME=*' } | Select-Object -First 1) -replace '^RUNNER_NAME=', ''
         $url = ($envVars | Where-Object { $_ -like 'RUNNER_URL=*' } | Select-Object -First 1) -replace '^RUNNER_URL=', ''
         $runnerRepo = if ($url -match '^https://github\.com/([^/]+/[^/]+?)/?$') { $Matches[1] } else { $DefaultRepo }
-        [pscustomobject]@{ Container = $name; Image = $image; RunnerName = $runnerName ? $runnerName : $name; Repo = $runnerRepo }
+        if (-not $runnerName) { $runnerName = $name }
+        # A container can run several runners (RUNNER_COUNT, see the runner image's start.ps1): the first has the
+        # plain name, the rest add -2, -3 ... The container is idle only when all of them are.
+        $count = ($envVars | Where-Object { $_ -like 'RUNNER_COUNT=*' } | Select-Object -First 1) -replace '^RUNNER_COUNT=', ''
+        $runnerNames = @($runnerName) + @(if ($count -match '^\d+$' -and [int]$count -gt 1) { 2..[int]$count | ForEach-Object { "$runnerName-$_" } })
+        [pscustomobject]@{ Container = $name; Image = $image; RunnerName = $runnerName; RunnerNames = $runnerNames; Repo = $runnerRepo }
     }
 }
 
@@ -106,7 +112,7 @@ $results = [Collections.Generic.List[object]]::new()
 while ($pending.Count) {
     $busy = Get-BusyMap @($pending.Repo | Sort-Object -Unique)
     foreach ($target in @($pending)) {
-        if ($busy["$($target.Repo)/$($target.RunnerName)"]) { continue }
+        if ($target.RunnerNames | Where-Object { $busy["$($target.Repo)/$_"] }) { continue }
         $results.Add((& $stopTarget $target))
         [void]$pending.Remove($target)
     }

@@ -24,7 +24,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IMAGE_ROOTS = ("nano-server", "server-core")
 # WINDOWS_VERSION is the base image (image-refresh.yml); PHP_VS_VERSION is the toolset the PHP row's note names
-IGNORED_PINS = {"WINDOWS_VERSION", "PHP_VS_VERSION"}
+# REACTOS_VERSION is not an upstream version: it names a nightly build that Fetch-Reactos.ps1 pins by commit and hash
+IGNORED_PINS = {"WINDOWS_VERSION", "PHP_VS_VERSION", "REACTOS_VERSION"}
 PIN = re.compile(r"\b(?P<name>[A-Z][A-Z0-9_]*_VERSION)=(?P<value>\"[^\"]*\"|[^\s\"\\]+)")
 
 # Pin name -> (kind, argument, note). The kinds are the fetchers in latest().
@@ -59,6 +60,12 @@ SOURCES: dict[str, tuple[str, str, str]] = {
     "RUST_VERSION": ("github", "rust-lang/rust", ""),
     "OPENSSH_VERSION": ("github", "PowerShell/Win32-OpenSSH", ""),
     "FAR_VERSION": ("far", "", "stable build; set FAR_BUILD and FAR_DATE as shown"),
+    "POWERSHELL_VERSION": ("github", "PowerShell/PowerShell", ""),
+    "WINE_VERSION": (
+        "index",
+        'https://dl.winehq.org/wine/source/|href="(\\d+\\.0)/"',
+        "newest stable series; also update the pins in fetch-wine.ps1",
+    ),
 }
 
 Fetch = Callable[[str, dict[str, str]], bytes]

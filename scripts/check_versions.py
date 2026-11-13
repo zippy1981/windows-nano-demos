@@ -59,6 +59,11 @@ SOURCES: dict[str, tuple[str, str, str]] = {
     "RUST_VERSION": ("github", "rust-lang/rust", ""),
     "OPENSSH_VERSION": ("github", "PowerShell/Win32-OpenSSH", ""),
     "FAR_VERSION": ("far", "", "stable build; set FAR_BUILD and FAR_DATE as shown"),
+    "FREEPASCAL_VERSION": (
+        "index",
+        'https://downloads.freepascal.org/fpc/dist/|href="(\\d+\\.\\d+\\.\\d+)/"',
+        "also update FREEPASCAL_SHA256, and check the release has an x86_64-win64 tar",
+    ),
 }
 
 Fetch = Callable[[str, dict[str, str]], bytes]

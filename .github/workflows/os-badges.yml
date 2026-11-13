@@ -10,6 +10,7 @@ on:
       - Artifact cache container
       - Editors container
       - Far Manager container
+      - Free Pascal container
       - GitHub runner container
       - Go container
       - MySQL container

@@ -59,6 +59,7 @@ SOURCES: dict[str, tuple[str, str, str]] = {
     "RUST_VERSION": ("github", "rust-lang/rust", ""),
     "OPENSSH_VERSION": ("github", "PowerShell/Win32-OpenSSH", ""),
     "FAR_VERSION": ("far", "", "stable build; set FAR_BUILD and FAR_DATE as shown, and FAR_SHA256 from the download"),
+    "STACKABLE_ODBC_VERSION": ("github", "stackabletech/stackable-odbc-sqlite", "")
 }
 
 Fetch = Callable[[str, dict[str, str]], bytes]

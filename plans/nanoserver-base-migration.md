@@ -12,7 +12,7 @@ Phase 1 of [#71](https://github.com/zippy1981/windows-nano-demos/issues/71): eve
 
 ## Decisions
 
-- **Rebuild trigger:** `refresh_matrix.py` learns to read `zippy1981/nanoserver-base` digests from Docker Hub, the same way it reads MCR's. The twice-daily run then rebuilds an image when its base changed (ADR 0004), instead of on a timer. This answers most of [#77](https://github.com/zippy1981/windows-nano-demos/issues/77).
+- **Rebuild trigger:** `refresh_matrix.py` learns to read `zippy1981/nanoserver-base` digests from Docker Hub, the same way it reads MCR's. The twice-daily run then rebuilds an image when its base changed (ADR 0004), instead of on a timer. [#77](https://github.com/zippy1981/windows-nano-demos/issues/77) added a dispatch from windows-nano-baseimages on top of the timer ([ADR 0018](../docs/adr/0018-nanoserver-base-publishes-dispatch-the-image-refresh.md)).
 - **Pull requests:** three, in the order below. PR 1 doesn't need the new base. PR 2 needs the base published with the runtime DLLs.
 - **Far:** check whether Far can run on the base before moving it. If it can't, `server-core-far` stays as it is, and the plan records why.
 

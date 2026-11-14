@@ -2,7 +2,7 @@
 
 [Far Manager](https://www.farmanager.com/) 3.0 build 6699 x64 (the current stable build) in a Windows container, on the `PATH` as `far`.
 
-**This image is based on Windows Server Core, not Nano Server.** It lives under `server-core/` and is published as `zippy1981/windows-servercore-far`. Far needs desktop Win32 DLLs that Nano Server doesn't have, so the image is a lot bigger than the other ones here. See [Why not nanoserver](#why-not-nanoserver).
+**This image is based on Windows Server Core, not Nano Server.** It lives under `server-core/` and is published as `zippy1981/windows-servercore-far`. On ltsc2019 and ltsc2022, Far needs desktop Win32 DLLs that Nano Server doesn't have, so the image is a lot bigger than the other ones here: about 2.4 GB compressed, of which Far is about 20 MB and the rest is Server Core. See [Why not nanoserver](#why-not-nanoserver).
 
 ## Building
 
@@ -28,7 +28,10 @@ build.cmd
 
 `build.cmd` also passes `BASE_IMAGE` through to `docker build` when it's set. The default is `mcr.microsoft.com/windows/servercore:ltsc%WINDOWS_VERSION%-amd64`.
 
-There are no host DLLs to stage. Far links the C runtime statically, so it doesn't need `vcruntime140.dll`. Far ships only as `.7z` and `.msi`, and Windows Server's `tar.exe` can't unpack the `.7z` (`tar: LZMA codec is unsupported`). So the Dockerfile downloads the standalone `7zr.exe` 26.06 from the 7-Zip GitHub releases, extracts Far with it, and then deletes it. Unlike `nano-server/nano-server-php`, you don't need 7-Zip installed on the host.
+There are no host DLLs to stage. Far links the C runtime statically, so it doesn't need `vcruntime140.dll`. Far ships only as `.7z` and `.msi`, and Windows Server's `tar.exe` can't unpack the `.7z` (`tar: LZMA codec is unsupported`). The Dockerfile has three stages:
+
+1. **fetch** (`zippy1981/nanoserver-base`'s `-pwsh` tag) downloads the `.7z` to a file, checks it against `FAR_SHA256` with PowerShell's `Get-FileHash`, and unpacks it with the base's bsdtar 3.8.11 (`tar.exe` in `C:\tools\bin`, first on `PATH`), which reads Far's LZMA and BCJ2 `.7z` (ADR 0017). farmanager.com publishes no checksums, so the hash was computed from that download. Update `FAR_BUILD`, `FAR_DATE` and `FAR_SHA256` together. `scripts/check_versions.py` says when a new stable build is out. No 7-Zip is downloaded, and none is needed on the host.
+2. The final Server Core stage copies the extracted folder in one layer and puts it on `ContainerUser`'s `PATH`.
 
 ## Running
 
@@ -80,9 +83,19 @@ PASS
 - Works: Far starts, draws its panels, loads plugins and runs Lua macros. It runs commands from its command line and quits cleanly with exit code 0, under both process and hyperv isolation on ltsc2022.
 - Works: `far.exe -?` writes the help text to stdout even without a TTY.
 - Doesn't work: running Far without `-t`/`-it`. It's an interactive console UI.
-- Doesn't work: Nano Server (see below).
+- Doesn't work: Nano Server on ltsc2019 and ltsc2022. It works on ltsc2025 (see below).
 - Untested: anything that needs a GUI or clipboard, network panels, and the NetBox plugin.
 
 ## Why not nanoserver
 
-Far.exe statically imports `WINSPOOL.DRV`, `COMDLG32.dll`, `SHELL32.dll`, `SETUPAPI.dll`, `IMM32.dll` and other desktop DLLs. On `nanoserver:ltsc2022`, `far.exe -?` exits with `0xC0000135` (`STATUS_DLL_NOT_FOUND`) before printing anything. Copying those DLLs over from Server Core doesn't fix it either. The error changes to `0xC0000139` (`STATUS_ENTRYPOINT_NOT_FOUND`), because the OS DLLs depend on each other in ways that don't carry across SKUs. Nano Server also can't run the 32-bit `7zr.exe`, since it has no WoW64.
+Far.exe statically imports `ADVAPI32`, `COMDLG32`, `IMM32`, `KERNEL32`, `MPR`, `NETAPI32`, `OLE32`, `PSAPI`, `RPCRT4`, `SECUR32`, `SETUPAPI`, `SHELL32`, `USER32`, `USERENV`, `VERSION` and `WINSPOOL.DRV`, and loads nothing late. `sqlite3.dll` ships with Far. Tested in #85 on `zippy1981/nanoserver-base` (ADR 0017), with the test in [Testing](#testing):
+
+| Base | `far.exe -?` | Interactive test |
+| --- | --- | --- |
+| `nanoserver-base:ltsc2019` | `0xC0000135` (`STATUS_DLL_NOT_FOUND`) | not reached |
+| `nanoserver-base:ltsc2022` | `0xC0000135` | not reached |
+| `nanoserver-base:ltsc2025` | exit 0 | `PASS` |
+
+Most of those names resolve through Windows' API sets rather than files in `System32`, so a missing file isn't proof by itself. Of Far's direct imports, `netapi32.dll` is the one file that ltsc2025's Nano Server has and ltsc2019 and ltsc2022 don't. On ltsc2022, copying the DLLs over from Server Core only changes the error to `0xC0000139` (`STATUS_ENTRYPOINT_NOT_FOUND`), because the OS DLLs depend on each other in ways that don't carry across SKUs.
+
+So the image stays on Server Core for every version. Building ltsc2025 on Nano Server would make that tag about a tenth of the size, but it would mean a new image name and a per-version base. #87 tracks that.

@@ -1,4 +1,4 @@
-# windows-nano-go: Go, MinGit and the micro editor on Nano Server. CI builds the three newest Go releases.
+# windows-nano-go: Go, MinGit and the micro editor on Nano Server. CI builds the two Go releases Go still supports.
 # Docker Hub categories: languages-and-frameworks, developer-tools
 #
 # Build from this folder (build.cmd does the same, and also tags zippy1981/windows-nano-go):
@@ -13,7 +13,7 @@ ARG WINDOWS_VERSION=2025
 ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
 FROM ${BASE_IMAGE}
 
-# The Go toolchain version (issue #20). CI builds the three newest Go releases, and the default is the newest.
+# The Go toolchain version (issue #20). CI builds the two newest Go releases (the ones Go supports), and the default is the newest.
 # Set with --build-arg GO_VERSION=1.26.10.
 ARG GO_VERSION=1.27.3
 

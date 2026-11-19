@@ -1,0 +1,70 @@
+# Daily check of the Go release lines in go-container.yml against Go's support policy and the newest upstream patches
+# (scripts/go_releases.py). One "Go release alert" issue holds the current findings: it is opened when a line needs
+# work, gets a comment whenever the findings change, and closes once every leg is current. Changing the matrix stays a
+# reviewed pull request (ADR 0007), so this workflow only reports.
+name: Go release alert
+
+on:
+  schedule:
+    # Go ships patch releases every few weeks, so once a day is plenty. Off the hour, so it doesn't queue behind other runs.
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: go-release-alert
+  cancel-in-progress: false
+
+env:
+  UV_PYTHON: '3.14'
+  UV_PYTHON_PREFERENCE: only-managed
+
+jobs:
+  check:
+    # Reads the GitHub API and the repo only, no docker, so a GitHub-hosted runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Install
+        run: uv sync --locked
+
+      - name: Compare the Go matrix with the release lines
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          uv run python scripts/go_releases.py --output go-release-alert.md
+          if [ -s go-release-alert.md ]; then
+            cat go-release-alert.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Open, update or close the Go release alert issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create go-release --color FBCA04 --description 'Go release lines to pick up' 2>/dev/null || true
+          issue=$(gh issue list --label go-release --state open --json number --jq '.[0].number // empty')
+          if [ -s go-release-alert.md ]; then
+            if [ -z "$issue" ]; then
+              gh issue create --title 'Go release alert' --label go-release --body-file go-release-alert.md
+            else
+              current=$(gh issue view "$issue" --json body --jq .body)
+              # Comment only when the findings change, so a daily run that finds the same thing stays quiet
+              if [ "$current" != "$(cat go-release-alert.md)" ]; then
+                gh issue edit "$issue" --body-file go-release-alert.md
+                printf 'Findings changed in %s\n\n' "$RUN_URL" > comment.md
+                cat go-release-alert.md >> comment.md
+                gh issue comment "$issue" --body-file comment.md
+              fi
+            fi
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "Every supported Go line in the matrix is current: $RUN_URL"
+          fi

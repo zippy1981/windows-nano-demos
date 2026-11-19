@@ -109,6 +109,7 @@ Two plans look at filling Nano Server's gaps with open-source builds of the miss
 | Start a new image folder | `./scripts/New-NanoServerImage.ps1 -Name <name> -Url <artifact-url>` | `image-scaffolder`, `windows-demo-scaffolder` |
 | Build and smoke-test one image as CI does, then clean up | `uv run python scripts/local_image_check.py <folder> --version 2025` | `local-image-check`, `windows-container-builder` |
 | Which pinned tool versions are behind upstream | `uv run python scripts/check_versions.py --outdated` | `version-check`, `windows-deps-updater` |
+| Which Go release lines in the matrix need work (daily alert issue) | `uv run python scripts/go_releases.py` | `go-release-alert.yml` |
 | Lint the workflows (pinned actionlint, downloaded once) | `uv run python scripts/actionlint.py` | `actionlint`, `workflow-author` |
 | Why containers won't build or run on this host | `./scripts/Test-ContainerHost.ps1` | `container-host-check`, `windows-host-doctor` |
 | The mechanical part of a governance audit | `uv run pytest -q --tb=line` | `governance-scan`, `governance` |

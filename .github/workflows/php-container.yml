@@ -23,7 +23,19 @@ concurrency:
 
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # One leg per PHP release line that PHP still supports (ADR 0005 variants). The newest owns the plain :<win>
+        # tags. php-vs is the Visual Studio toolset in the zip's name, which changes between lines, so it is pinned per leg.
+        # Add a leg when a line becomes supported, and remove it when PHP ends its security support.
+        include:
+          - {php-version: '8.5.12-1', php-vs: '17', variant: 'php8.5.12-1', tag-prefix: '8.5.12-1', also-plain-tags: true}
     uses: ./.github/workflows/build-windows-image.yml
     with:
       context: nano-server/nano-server-php
       image: windows-nano-php
+      build-args: '{"PHP_VERSION": "${{ matrix.php-version }}", "PHP_VS_VERSION": "${{ matrix.php-vs }}"}'
+      variant: ${{ matrix.variant }}
+      tag-prefix: ${{ matrix.tag-prefix }}
+      also-plain-tags: ${{ matrix.also-plain-tags }}

@@ -16,13 +16,20 @@ ARG BASE_IMAGE=zippy1981/nanoserver-base:ltsc${WINDOWS_VERSION}
 # msvcp140.dll for the ICU DLLs and a few other extensions). The base image ships all three in System32.
 FROM ${BASE_IMAGE}
 
+# The PHP release to build, as a full version with its Windows build suffix. CI builds every supported PHP line
+# (the matrix in php-container.yml), and the default is the newest. Set with --build-arg PHP_VERSION=8.5.12-1.
+ARG PHP_VERSION=8.5.12-1
+# The Visual Studio toolset in the PHP zip's name (vs17 for PHP 8.5). It changes between PHP lines, so the matrix
+# sets it per leg. Set with --build-arg PHP_VS_VERSION=17.
+ARG PHP_VS_VERSION=17
+
 # Pinned versions
 ENV \
     MICROEDITOR_VERSION=2.0.15 \
     NODE_VERSION=26.13.0 \
     NPM_VERSION=12.2.2 \
-    PHP_VERSION=8.5.12-1 \
-    PHP_VS_VERSION=17
+    PHP_VERSION=${PHP_VERSION} \
+    PHP_VS_VERSION=${PHP_VS_VERSION}
 
 # Install locations derived from the versions above.
 # This has to be a separate ENV instruction: ENV can't reference variables set in the same instruction.

@@ -1,5 +1,5 @@
-# Builds and tests windows-nano-go for the three newest Go releases (issue #20) on every Windows version,
-# through the shared workflow (ADR 0009)
+# Builds and tests windows-nano-go for the two Go releases that are still supported (issue #20) on every Windows
+# version, through the shared workflow (ADR 0009). go-release-alert.yml reports when this matrix falls behind.
 name: Go container
 
 on:
@@ -30,13 +30,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The latest patch of the three newest Go release lines without cgo, plus a cgo variant of the newest
-        # (plans/go-cgo.md, ADR 0013). windows-deps-updater bumps these. Each is published as
+        # The latest patch of each Go release line that Go still supports (the two newest majors, per Go's release
+        # policy), plus a cgo variant of the newest (plans/go-cgo.md, ADR 0013). Lines drop out when a newer one ships:
+        # scripts/go_releases.py reports that, and the alert issue links here. Each is published as
         # windows-nano-go:<prefix>-<win> (ADR 0005); the newest plain build also owns the plain :<win> tags.
         include:
           - {go-version: '1.27.3', cgo: '0', variant: 'go1.27.3', tag-prefix: '1.27.3', also-plain-tags: true, timeout-minutes: 90}
           - {go-version: '1.26.10', cgo: '0', variant: 'go1.26.10', tag-prefix: '1.26.10', also-plain-tags: false, timeout-minutes: 90}
-          - {go-version: '1.25.14', cgo: '0', variant: 'go1.25.14', tag-prefix: '1.25.14', also-plain-tags: false, timeout-minutes: 90}
           # Extracting llvm-mingw takes 10 to 15 minutes under Hyper-V, and the cgo smoke tests build sqlcmd on top
           - {go-version: '1.27.3', cgo: '1', variant: 'go1.27.3-cgo', tag-prefix: '1.27.3-cgo', also-plain-tags: false, timeout-minutes: 150}
     uses: ./.github/workflows/build-windows-image.yml

@@ -34,6 +34,7 @@ ENV \
     GOTOOLCHAIN=local \
     GOROOT="C:\\Program Files\\go" \
     GOPATH="C:\\users\\containeruser\\go" \
+    USERPROFILE="C:\\users\\containeruser" \
     MINGIT_VERSION=2.56.0.4 \
     MINGIT_TAG=v2.56.0.windows.4 \
     MINGIT_DIR="C:\\Program Files\\MinGit"

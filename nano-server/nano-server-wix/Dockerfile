@@ -34,7 +34,6 @@ ENV \
     GOTOOLCHAIN=local \
     GOROOT="C:\\Program Files\\go" \
     GOPATH="C:\\users\\containeruser\\go" \
-    USERPROFILE="C:\\users\\containeruser" \
     MINGIT_VERSION=2.56.0.4 \
     MINGIT_TAG=v2.56.0.windows.4 \
     MINGIT_DIR="C:\\Program Files\\MinGit"
@@ -60,7 +59,12 @@ RUN mkdir "%MINGIT_DIR%" && \
     tar -xf MinGit.zip -C "%MINGIT_DIR%" && \
     del MinGit.zip
 
-# Create GOPATH\bin and add dotnet, Go, and MinGit to the user PATH.
+# Switch to ContainerUser before installing the WiX global tool. dotnet tool install --global
+# puts the shim in %USERPROFILE%\.dotnet\tools; running as ContainerUser ensures %USERPROFILE%
+# resolves to C:\users\containeruser, which is also the runtime user's profile.
+USER ContainerUser
+
+# Create GOPATH\bin and add dotnet, Go, and MinGit to ContainerUser's PATH.
 # In nano 2019 we need to make the users environment key before we can add values to it.
 RUN reg query HKCU\Environment 2> NUL || reg add HKCU\Environment /v PATH
 RUN mkdir "%GOPATH%\bin" && \

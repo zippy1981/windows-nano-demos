@@ -69,7 +69,7 @@ TRUSTED_ACTION_OWNERS = {"actions"}
 TAR_FROM_PIPE = re.compile(r"""\|\s*&?\s*["']?(?:[^\s|"']*[\\/])?(?:bsd)?tar(?:\.exe)?["']?(?=\s|$)""", re.IGNORECASE)
 # The files that run commands, which the rule applies to (comment lines are skipped)
 SCRIPT_GLOBS = ["**/Dockerfile", "**/*.cmd", "**/*.bat", "**/*.ps1", "**/*.psm1", "**/*.sh", "**/*.yml", "**/*.yaml"]
-_SKIPPED_DIRS = {".git", ".venv", "node_modules", ".ruff_cache", ".pytest_cache"}
+_SKIPPED_DIRS = {".git", ".venv", "node_modules", ".ruff_cache", ".pytest_cache", ".claude"}
 _COMMENT_LINE = re.compile(r"^\s*(?:#|rem(?:\s|$)|::)", re.IGNORECASE)
 
 _DOCKER_COMMAND = re.compile(r"(?m)^\s*(?:\$\w+\s*=\s*)?docker(?:\.exe)?\s")

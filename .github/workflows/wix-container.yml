@@ -1,0 +1,32 @@
+# Builds and tests windows-nano-wix for every Windows version through the shared workflow (ADR 0009)
+name: WiX container
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nano-server/nano-server-wix/**'
+      - '.github/workflows/wix-container.yml'
+      - '.github/workflows/build-windows-image.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'nano-server/nano-server-wix/**'
+      - '.github/workflows/wix-container.yml'
+      - '.github/workflows/build-windows-image.yml'
+  workflow_dispatch:
+
+# A new push to a pull request cancels that pull request's older runs. Pushes to main always run to completion.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-windows-image.yml
+    with:
+      context: nano-server/nano-server-wix
+      image: windows-nano-wix
+      # Installing .NET SDK and WiX needs more than the default 60 minutes;
+      # the standard smoke test adds a minimal WiX MSI build on top.
+      timeout-minutes: 120

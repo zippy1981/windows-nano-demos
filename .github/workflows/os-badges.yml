@@ -18,6 +18,7 @@ on:
       - PowerShell SQLite ODBC container
       - Rust container
       - SSH server container
+      - WiX container
     types: [completed]
     branches: [main]
   workflow_dispatch:

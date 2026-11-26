@@ -60,6 +60,8 @@ SOURCES: dict[str, tuple[str, str, str]] = {
     "OPENSSH_VERSION": ("github", "PowerShell/Win32-OpenSSH", ""),
     "STACKABLE_ODBC_VERSION": ("github", "stackabletech/stackable-odbc-sqlite", ""),
     "FAR_VERSION": ("far", "", "stable build; set FAR_BUILD and FAR_DATE as shown"),
+    "DOTNET_SDK_VERSION": ("dotnet-sdk", "", ""),
+    "WIX_VERSION": ("github", "wixtoolset/wix", ""),
 }
 
 Fetch = Callable[[str, dict[str, str]], bytes]
@@ -178,6 +180,12 @@ def latest(kind: str, argument: str, current: str, fetch: Fetch) -> tuple[str, s
         url, pattern = argument.split("|")
         found = re.findall(pattern, fetch(url, {}).decode("utf-8"))
         return max(found, key=numbers), ""
+    if kind == "dotnet-sdk":
+        series_str = ".".join(str(p) for p in numbers(current)[:2])
+        data = json.loads(
+            fetch(f"https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/{series_str}/releases.json", {})
+        )
+        return data["latest-sdk"], ""
     if kind == "far":
         # The page lists stable builds before nightlies; GitHub's latest release is a nightly
         page = fetch("https://www.farmanager.com/download.php", {}).decode("utf-8")
